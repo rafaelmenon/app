@@ -40,4 +40,5 @@ yarn-error.*
 /ios
 /android
 
-output_apks/splits
+output_apks
+output.apks

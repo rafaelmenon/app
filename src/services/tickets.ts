@@ -27,8 +27,9 @@ export const ticketsService = {
     if (showAll) {
       params.append('showAll', 'true');
     }
-    // Só adicionar queueIds se o array não estiver vazio
-    if (queueIds !== undefined && queueIds.length > 0) {
+    // SEMPRE enviar queueIds quando definido (mesmo se vazio) para que o backend
+    // saiba que é uma seleção consciente do usuário e respeite o includeNoQueue
+    if (queueIds !== undefined) {
       params.append('queueIds', queueIds.join(','));
     }
     if (includeNoQueue) {
