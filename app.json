@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "app",
-    "slug": "app",
-    "version": "1.0.0",
+    "name": "WhatsProfissional",
+    "slug": "WhatsProfissional",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -10,21 +10,27 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#321e3c"
     },
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "package": "com.whatsprofissional.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#321e3c"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c6a74a5c-50c0-4b9e-b9af-a2e7f8f97dfe"
+      }
     }
   }
 }
