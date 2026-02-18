@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "WhatsProfissional",
-    "slug": "WhatsProfissional",
+    "slug": "whatsprofissional",
     "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,10 +13,17 @@
       "backgroundColor": "#321e3c"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "buildNumber": "2",
+      "bundleIdentifier": "com.whatsprofissional.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSMicrophoneUsageDescription": "Precisamos de acesso ao seu microfone para que você possa enviar mensagens de voz para seus contatos."
+      }
     },
     "android": {
       "package": "com.whatsprofissional.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#321e3c"
@@ -29,7 +36,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "c6a74a5c-50c0-4b9e-b9af-a2e7f8f97dfe"
+        "projectId": "1ebc05ee-780a-47c7-a6bf-4799c5792bb8"
       }
     }
   }

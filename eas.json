@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 3.0.0"
+    "version": ">= 3.0.0",
+    "appVersionSource": "local"
   },
   "build": {
     "development": {
@@ -8,7 +9,9 @@
       "distribution": "internal"
     },
     "preview": {
+      "node": "20.19.4",
       "android": {
+        "image": "ubuntu-24.04-jdk-17-ndk-r27b",
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease"
       },
@@ -18,8 +21,13 @@
       }
     },
     "production": {
+      "node": "20.19.4",
       "android": {
+        "image": "ubuntu-24.04-jdk-17-ndk-r27b",
         "buildType": "app-bundle"
+      },
+      "ios": {
+        "image": "macos-sonoma-14.6-xcode-16.1"
       }
     }
   },

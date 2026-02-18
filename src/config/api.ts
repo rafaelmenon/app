@@ -4,6 +4,6 @@
 // Para iOS simulator, use localhost
 
 export const API_CONFIG = {
-  // baseURL: "https://api-v2.whatsprofissional.com/api",
-  baseURL: "https://aa4b3d6b34b7.ngrok-free.app/api",
+  baseURL: "https://api-v2.whatsprofissional.com/api",
+  // baseURL: "https://aa4b3d6b34b7.ngrok-free.app/api",
 };

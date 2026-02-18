@@ -19,8 +19,8 @@ export const useSocket = (props: UseSocketProps) => {
     }
 
     // Conectar ao servidor Socket.IO
-    // const socketUrl = "https://api-v2.whatsprofissional.com";
-    const socketUrl = "https://aa4b3d6b34b7.ngrok-free.app";
+    const socketUrl = "https://api-v2.whatsprofissional.com";
+    // const socketUrl = "https://aa4b3d6b34b7.ngrok-free.app";
 
     http: socket.current = io(socketUrl, {
       transports: ["websocket", "polling"],
@@ -77,7 +77,7 @@ export const useSocket = (props: UseSocketProps) => {
     if (!userCompanyId) {
       console.warn(
         "⚠️ SEGURANÇA: Evento bloqueado - companyId do usuário não encontrado",
-        eventName
+        eventName,
       );
       return false;
     }
