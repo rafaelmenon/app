@@ -24,17 +24,15 @@ export const ticketsService = {
     if (isGroup !== undefined) {
       params.append('isGroup', isGroup.toString());
     }
-    if (showAll) {
-      params.append('showAll', 'true');
-    }
+    // SEMPRE enviar showAll (mesmo se false) para evitar usar valor desatualizado do banco
+    params.append('showAll', showAll.toString());
     // SEMPRE enviar queueIds quando definido (mesmo se vazio) para que o backend
     // saiba que é uma seleção consciente do usuário e respeite o includeNoQueue
     if (queueIds !== undefined) {
       params.append('queueIds', queueIds.join(','));
     }
-    if (includeNoQueue) {
-      params.append('includeNoQueue', 'true');
-    }
+    // SEMPRE enviar includeNoQueue (mesmo se false) para evitar usar valor incorreto
+    params.append('includeNoQueue', includeNoQueue.toString());
     params.append('page', page.toString());
     params.append('limit', limit.toString());
 

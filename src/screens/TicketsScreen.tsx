@@ -66,6 +66,52 @@ export function TicketsScreen({ navigation }: TicketsScreenProps) {
   const [queues, setQueues] = useState<Queue[]>([]);
   const [selectedQueueIds, setSelectedQueueIds] = useState<string[]>([]);
   const [includeNoQueue, setIncludeNoQueue] = useState(true);
+  const [queuesLoaded, setQueuesLoaded] = useState(false); // Flag para saber se as filas foram carregadas
+
+  // Refs para manter valores atuais dos filtros (para uso em callbacks)
+  const selectedQueueIdsRef = useRef<string[]>([]);
+  const queuesRef = useRef<Queue[]>([]);
+  const includeNoQueueRef = useRef(true);
+
+  // Atualizar refs quando os estados mudam
+  useEffect(() => {
+    selectedQueueIdsRef.current = selectedQueueIds;
+    queuesRef.current = queues;
+    includeNoQueueRef.current = includeNoQueue;
+  }, [selectedQueueIds, queues, includeNoQueue]);
+
+  // Função para verificar se um ticket deve ser exibido baseado nos filtros de fila
+  const shouldShowTicket = useCallback((ticket: Ticket): boolean => {
+    // Grupos sempre são exibidos (filtro de fila não se aplica)
+    if (ticket.isGroup) return true;
+
+    const currentSelectedIds = selectedQueueIdsRef.current;
+    const currentQueues = queuesRef.current;
+    const currentIncludeNoQueue = includeNoQueueRef.current;
+
+    // Se todas as filas estão selecionadas, mostrar todos
+    if (currentSelectedIds.length === currentQueues.length && currentQueues.length > 0) {
+      // Todas selecionadas - verificar tickets sem fila
+      if (!ticket.queueId) {
+        return currentIncludeNoQueue;
+      }
+      return true;
+    }
+
+    // Se nenhuma fila está selecionada
+    if (currentSelectedIds.length === 0) {
+      // Mostrar apenas sem fila se includeNoQueue está ativo
+      return !ticket.queueId && currentIncludeNoQueue;
+    }
+
+    // Filas específicas selecionadas
+    if (ticket.queueId) {
+      return currentSelectedIds.includes(ticket.queueId);
+    }
+
+    // Ticket sem fila
+    return currentIncludeNoQueue;
+  }, []);
   const [showQueueFilterModal, setShowQueueFilterModal] = useState(false);
   const [showQueueSelectionModal, setShowQueueSelectionModal] = useState(false);
   const [showCloseTicketModal, setShowCloseTicketModal] = useState(false);
@@ -109,13 +155,25 @@ export function TicketsScreen({ navigation }: TicketsScreenProps) {
       // Para grupos, showAll sempre true (mostrar todos os grupos da empresa)
       const useShowAll = tab === 'groups' ? true : showAll;
 
+      // Determinar queueIds baseado na seleção:
+      // - Todas marcadas (ou nenhuma carregada ainda) → undefined (sem filtro)
+      // - Nenhuma marcada explicitamente → [] (apenas sem fila)
+      // - Seleção específica → array com IDs
+      const queueIdsToSend =
+        selectedQueueIds.length === queues.length ||
+        (selectedQueueIds.length === 0 && queues.length === 0)
+          ? undefined
+          : selectedQueueIds.length === 0
+          ? []
+          : selectedQueueIds;
+
       const response = await ticketsService.getTickets(
         status,
         page,
         15,
         isGroup,
         useShowAll,
-        selectedQueueIds,
+        queueIdsToSend,
         includeNoQueue
       );
 
@@ -194,16 +252,21 @@ export function TicketsScreen({ navigation }: TicketsScreenProps) {
     }
   };
 
-  // Carregar filas ao iniciar
+  // Carregar filas do usuário ao iniciar
   useEffect(() => {
     const loadQueues = async () => {
       try {
-        const userQueues = await queuesService.getQueues();
+        // Usar getMyQueues para carregar apenas as filas do usuário logado
+        const userQueues = await queuesService.getMyQueues();
         setQueues(userQueues);
         // Por padrão, todas as filas vêm selecionadas
         setSelectedQueueIds(userQueues.map((q) => q.id));
+        setQueuesLoaded(true); // Marcar que as filas foram carregadas
       } catch (error) {
         console.error('Erro ao carregar filas:', error);
+        setQueues([]);
+        setSelectedQueueIds([]);
+        setQueuesLoaded(true); // Marcar como carregado mesmo em erro
       }
     };
     loadQueues();
@@ -243,14 +306,19 @@ export function TicketsScreen({ navigation }: TicketsScreenProps) {
   }, [searchQuery, showSearch]);
 
   // Carregar tickets na inicialização e quando filtros mudam
+  // IMPORTANTE: Só carregar após as filas terem sido carregadas para evitar enviar filtro incorreto
   useEffect(() => {
+    if (!queuesLoaded) return; // Aguardar filas serem carregadas
     loadAllTabs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showAll, selectedQueueIds, includeNoQueue]);
+  }, [showAll, selectedQueueIds, includeNoQueue, queuesLoaded]);
 
   // Socket.IO Event Handlers
   const handleTicketCreated = useCallback((data: { ticket: Ticket }) => {
-   
+    // Verificar se o ticket deve ser exibido baseado nos filtros de fila
+    if (!shouldShowTicket(data.ticket)) {
+      return;
+    }
 
     // Determinar a aba do ticket
     const ticketTab: TabType = data.ticket.isGroup
@@ -260,11 +328,9 @@ export function TicketsScreen({ navigation }: TicketsScreenProps) {
     setTicketsByTab((prev) => {
       // Verificar se o ticket já existe
       if (prev[ticketTab].some(t => t.id === data.ticket.id)) {
-     
         return prev;
       }
 
-    
       // Adicionar ticket no início da lista da aba correspondente
       return {
         ...prev,
@@ -274,15 +340,17 @@ export function TicketsScreen({ navigation }: TicketsScreenProps) {
 
     // Atualizar contador
     setTotalCounts((prev) => {
-    
       return {
         ...prev,
         [ticketTab]: prev[ticketTab] + 1,
       };
     });
-  }, []);
+  }, [shouldShowTicket]);
 
   const handleTicketUpdated = useCallback((data: { ticket: Ticket }) => {
+    // Verificar se o ticket deve ser exibido baseado nos filtros de fila
+    const shouldShow = shouldShowTicket(data.ticket);
+
     // Determinar a aba do ticket
     const ticketTab: TabType = data.ticket.isGroup
       ? 'groups'
@@ -302,6 +370,14 @@ export function TicketsScreen({ navigation }: TicketsScreenProps) {
 
       const newState = { ...prev };
 
+      // Se o ticket não deve ser exibido, remover de todas as abas
+      if (!shouldShow) {
+        if (foundInTab) {
+          newState[foundInTab] = newState[foundInTab].filter(t => t.id !== data.ticket.id);
+        }
+        return newState;
+      }
+
       // Se encontrou em uma aba
       if (foundInTab) {
         // Remover da aba antiga
@@ -315,10 +391,11 @@ export function TicketsScreen({ navigation }: TicketsScreenProps) {
 
       return newState;
     });
-  }, []);
+  }, [shouldShowTicket]);
 
   const handleTicketNewMessage = useCallback((data: { ticket: Ticket; message: any }) => {
-   
+    // Verificar se o ticket deve ser exibido baseado nos filtros de fila
+    const shouldShow = shouldShowTicket(data.ticket);
 
     // Determinar a aba do ticket
     const ticketTab: TabType = data.ticket.isGroup
@@ -336,7 +413,17 @@ export function TicketsScreen({ navigation }: TicketsScreenProps) {
           break;
         }
       }
- 
+
+      // Se o ticket não deve ser exibido, remover se existir
+      if (!shouldShow) {
+        if (foundInTab) {
+          const newState = { ...prev };
+          newState[foundInTab] = newState[foundInTab].filter(t => t.id !== data.ticket.id);
+          return newState;
+        }
+        return prev;
+      }
+
       if (foundInTab) {
         // Ticket existe, atualizar
         const tickets = prev[foundInTab];
@@ -376,7 +463,7 @@ export function TicketsScreen({ navigation }: TicketsScreenProps) {
         [ticketTab]: [data.ticket, ...prev[ticketTab]],
       };
     });
-  }, []);
+  }, [shouldShowTicket]);
 
   const handleTicketCountsUpdated = useCallback((data: {
     open: number;
