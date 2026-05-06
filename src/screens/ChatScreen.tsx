@@ -491,7 +491,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
             isFromMe ? styles.messageFromMe : styles.messageFromContact,
           ]}
         >
-          <AudioPlayer audioUrl={item.mediaUrl} isFromMe={isFromMe} />
+          <AudioPlayer audioUrl={item.mediaUrl} messageId={item.id} isFromMe={isFromMe} />
         </View>
       );
     }
