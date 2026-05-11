@@ -186,10 +186,10 @@ export function AudioPlayer({ audioUrl, messageId, isFromMe }: AudioPlayerProps)
 
       {transcription && (
         <View style={[styles.transcriptionContainer, isFromMe ? styles.transcriptionContainerFromMe : styles.transcriptionContainerFromContact]}>
-          <Text style={[styles.transcriptionLabel, { color: isFromMe ? '#6b7280' : '#d1d5db' }]}>
+          <Text style={[styles.transcriptionLabel, { color: isFromMe ? '#4b5563' : '#d1d5db' }]}>
             Transcrição
           </Text>
-          <Text style={[styles.transcriptionText, { color: isFromMe ? '#374151' : '#ffffff' }]}>
+          <Text style={[styles.transcriptionText, { color: isFromMe ? '#1f2937' : '#ffffff' }]}>
             {transcription}
           </Text>
         </View>
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   transcribeButtonTextFromMe: {
-    color: '#3b82f6',
+    color: '#1d4ed8',
   },
   transcribeButtonTextFromContact: {
     color: '#ffffff',
