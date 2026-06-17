@@ -2,7 +2,7 @@
   "expo": {
     "name": "WhatsProfissional",
     "slug": "whatsprofissional",
-    "version": "1.0.3",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "4",
+      "buildNumber": "6",
       "bundleIdentifier": "com.whatsprofissional.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -23,7 +23,7 @@
     },
     "android": {
       "package": "com.whatsprofissional.app",
-      "versionCode": 3,
+      "versionCode": 5,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#321e3c"
