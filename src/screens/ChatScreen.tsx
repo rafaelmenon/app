@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Fragment } from 'react';
 import {
   View,
   Text,
@@ -14,18 +14,18 @@ import {
   Switch,
   Linking,
   Alert,
+  Keyboard,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Video, ResizeMode, Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system/legacy';
 import EmojiPicker from 'rn-emoji-keyboard';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSocket } from '../hooks';
 import { useAuth } from '../contexts/AuthContext';
-import { messagesService } from '../services/messages';
+import { messagesService, MediaUploadProgress } from '../services/messages';
 import { AudioPlayer, ContactMessage, DocumentMessage, TransferTicketModal } from '../components';
 import type { Message } from '../types';
 import type { RootStackParamList } from '../navigation/AppNavigator';
@@ -51,7 +51,10 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStage, setUploadStage] = useState<MediaUploadProgress | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const recordingRef = useRef<Audio.Recording | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const flatListRef = useRef<FlatList>(null);
@@ -119,6 +122,23 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
     });
   }, [user?.type]);
 
+  // Detectar quando o teclado abre/fecha para ajustar padding
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
+
   // Scroll para o final quando carregar mensagens pela primeira vez
   useEffect(() => {
     if (messages.length > 0 && !loading) {
@@ -159,7 +179,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   // Socket event handler para atualização de status
   const handleMessageStatusUpdate = useCallback(
     (data: { messageId: string; status: string; ticketId: string; companyId?: string }) => {
-    
+
       // Só atualizar se for do ticket atual
       if (data.ticketId === ticket.id) {
         setMessages((prev) =>
@@ -172,17 +192,40 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
     [ticket.id]
   );
 
+  // Socket event handler para progresso de upload de mídia
+  const handleMediaUploadProgress = useCallback(
+    (data: MediaUploadProgress) => {
+      // Só processar eventos deste ticket
+      if (data.ticketId !== ticket.id) return;
+
+      // Atualizar estado de progresso
+      setUploadStage(data);
+
+      // Se completou ou deu erro, limpar após alguns segundos
+      if (data.stage === 'completed' || data.stage === 'error') {
+        setTimeout(() => {
+          setUploadStage(null);
+          setUploadingMedia(false);
+          setUploadProgress(0);
+        }, 3000);
+      }
+    },
+    [ticket.id]
+  );
+
   useEffect(() => {
-   
+
     on('message_created', handleNewMessage);
     on('message_status_update', handleMessageStatusUpdate);
+    on('media_upload_progress', handleMediaUploadProgress);
 
     return () => {
-      
+
       off('message_created', handleNewMessage);
       off('message_status_update', handleMessageStatusUpdate);
+      off('media_upload_progress', handleMediaUploadProgress);
     };
-  }, [on, off, handleNewMessage, handleMessageStatusUpdate]);
+  }, [on, off, handleNewMessage, handleMessageStatusUpdate, handleMediaUploadProgress]);
 
   const handleSignatureToggle = (enabled: boolean) => {
     if (user?.type === 'USER') return;
@@ -250,13 +293,6 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
 
   // === Funções de envio de mídia ===
 
-  const fileToBase64 = async (uri: string): Promise<string> => {
-    const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    return base64;
-  };
-
   const getMimeType = (uri: string, type?: string): string => {
     if (type) return type;
     const ext = uri.split('.').pop()?.toLowerCase() || '';
@@ -267,12 +303,126 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
       docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       xls: 'application/vnd.ms-excel',
       xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      zip: 'application/zip', mp3: 'audio/mpeg', wav: 'audio/wav',
+      zip: 'application/zip', rar: 'application/x-rar', '7z': 'application/x-7z-compressed',
+      mp3: 'audio/mpeg', wav: 'audio/wav', m4a: 'audio/mp4',
     };
     return mimeMap[ext] || 'application/octet-stream';
   };
 
+  // Tirar foto pela câmera e enviar
+  const handleTakePhoto = async () => {
+    // Não permitir tirar foto durante upload
+    if (uploadingMedia) {
+      Alert.alert('Aguarde', 'Já existe um arquivo sendo enviado');
+      return;
+    }
+
+    try {
+      // Solicitar permissão da câmera
+      const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!cameraPermission.granted) {
+        Alert.alert(
+          'Permissão necessária',
+          'Permita o acesso à câmera para tirar fotos',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        quality: 0.8,
+        allowsEditing: false,
+      });
+
+      if (result.canceled || !result.assets?.length) return;
+
+      const asset = result.assets[0];
+      setUploadingMedia(true);
+      setUploadProgress(0);
+
+      const mimeType = asset.mimeType || 'image/jpeg';
+      const fileName = `foto_${Date.now()}.jpg`;
+
+      // Enviar usando FormData
+      await messagesService.sendMediaMessage(
+        ticket.id,
+        asset.uri,
+        fileName,
+        mimeType,
+        undefined,
+        (progress) => setUploadProgress(progress)
+      );
+    } catch (error: any) {
+      console.error('Erro ao tirar foto:', error);
+      Alert.alert('Erro', 'Não foi possível tirar a foto');
+      setUploadingMedia(false);
+      setUploadProgress(0);
+      setUploadStage(null);
+    }
+  };
+
+  // Gravar vídeo pela câmera e enviar
+  const handleRecordVideo = async () => {
+    // Não permitir gravar vídeo durante upload
+    if (uploadingMedia) {
+      Alert.alert('Aguarde', 'Já existe um arquivo sendo enviado');
+      return;
+    }
+
+    try {
+      // Solicitar permissões de câmera e microfone
+      const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!cameraPermission.granted) {
+        Alert.alert(
+          'Permissão necessária',
+          'Permita o acesso à câmera para gravar vídeos',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['videos'],
+        quality: 0.7,
+        videoMaxDuration: 60, // Máximo de 60 segundos
+      });
+
+      if (result.canceled || !result.assets?.length) return;
+
+      const asset = result.assets[0];
+      setUploadingMedia(true);
+      setUploadProgress(0);
+
+      const mimeType = asset.mimeType || 'video/mp4';
+      const fileName = `video_${Date.now()}.mp4`;
+
+      // Enviar usando FormData
+      await messagesService.sendMediaMessage(
+        ticket.id,
+        asset.uri,
+        fileName,
+        mimeType,
+        undefined,
+        (progress) => setUploadProgress(progress)
+      );
+    } catch (error: any) {
+      console.error('Erro ao gravar vídeo:', error);
+      Alert.alert('Erro', 'Não foi possível gravar o vídeo');
+      setUploadingMedia(false);
+      setUploadProgress(0);
+      setUploadStage(null);
+    }
+  };
+
+  // Selecionar da galeria
   const handlePickImage = async () => {
+    // Não permitir selecionar nova mídia durante upload
+    if (uploadingMedia) {
+      Alert.alert('Aguarde', 'Já existe um arquivo sendo enviado');
+      return;
+    }
+
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images', 'videos'],
@@ -284,21 +434,36 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
 
       const asset = result.assets[0];
       setUploadingMedia(true);
+      setUploadProgress(0);
 
-      const base64 = await fileToBase64(asset.uri);
       const mimeType = asset.mimeType || getMimeType(asset.uri);
       const fileName = asset.fileName || `media_${Date.now()}.${mimeType.split('/')[1] || 'jpg'}`;
 
-      await messagesService.sendMediaMessage(ticket.id, base64, fileName, mimeType);
+      // Enviar usando FormData (mais eficiente que Base64)
+      await messagesService.sendMediaMessage(
+        ticket.id,
+        asset.uri,
+        fileName,
+        mimeType,
+        undefined,
+        (progress) => setUploadProgress(progress)
+      );
     } catch (error: any) {
       console.error('Erro ao enviar imagem/vídeo:', error);
       Alert.alert('Erro', 'Não foi possível enviar o arquivo');
-    } finally {
       setUploadingMedia(false);
+      setUploadProgress(0);
+      setUploadStage(null);
     }
   };
 
   const handlePickDocument = async () => {
+    // Não permitir selecionar nova mídia durante upload
+    if (uploadingMedia) {
+      Alert.alert('Aguarde', 'Já existe um arquivo sendo enviado');
+      return;
+    }
+
     try {
       const result = await DocumentPicker.getDocumentAsync({
         copyToCacheDirectory: true,
@@ -308,17 +473,26 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
 
       const asset = result.assets[0];
       setUploadingMedia(true);
+      setUploadProgress(0);
 
-      const base64 = await fileToBase64(asset.uri);
       const mimeType = asset.mimeType || getMimeType(asset.uri);
       const fileName = asset.name || `document_${Date.now()}`;
 
-      await messagesService.sendMediaMessage(ticket.id, base64, fileName, mimeType);
+      // Enviar usando FormData (mais eficiente que Base64)
+      await messagesService.sendMediaMessage(
+        ticket.id,
+        asset.uri,
+        fileName,
+        mimeType,
+        undefined,
+        (progress) => setUploadProgress(progress)
+      );
     } catch (error: any) {
       console.error('Erro ao enviar documento:', error);
       Alert.alert('Erro', 'Não foi possível enviar o documento');
-    } finally {
       setUploadingMedia(false);
+      setUploadProgress(0);
+      setUploadStage(null);
     }
   };
 
@@ -385,13 +559,16 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
       }
 
       setUploadingMedia(true);
-      const base64 = await fileToBase64(uri);
-      await messagesService.sendAudioMessage(ticket.id, base64);
+      setUploadProgress(0);
+
+      // Enviar usando FormData (mais eficiente que Base64)
+      await messagesService.sendAudioMessage(ticket.id, uri);
     } catch (error: any) {
       console.error('Erro ao enviar áudio:', error);
       Alert.alert('Erro', 'Não foi possível enviar o áudio');
-    } finally {
       setUploadingMedia(false);
+      setUploadProgress(0);
+      setUploadStage(null);
     }
   };
 
@@ -646,10 +823,11 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   };
 
   return (
+    <Fragment>
     <KeyboardAvoidingView
       style={styles.container}
-      behavior="padding"
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
       {/* Header */}
       <View style={styles.header}>
@@ -722,7 +900,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
 
       {/* Input Area */}
       {ticket.status === 'OPEN' ? (
-        <View style={[styles.inputWrapper, { paddingBottom: Math.max(12, insets.bottom) }]}>
+        <View style={[styles.inputWrapper, { paddingBottom: keyboardVisible ? 0 : Math.max(12, insets.bottom) }]}>
           {/* Toggle de assinatura */}
           <View style={styles.signatureRow}>
             <Text style={styles.signatureLabel}>Assinar</Text>
@@ -740,11 +918,106 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
             )}
           </View>
 
-          {/* Upload progress */}
+          {/* Upload progress - barra de progresso detalhada */}
           {uploadingMedia && (
-            <View style={styles.uploadingBar}>
-              <ActivityIndicator size="small" color="#8b5cf6" />
-              <Text style={styles.uploadingText}>Enviando arquivo...</Text>
+            <View style={styles.uploadingContainer}>
+              {/* Mensagem de status atual */}
+              <View style={styles.uploadingHeader}>
+                <ActivityIndicator size="small" color="#8b5cf6" />
+                <Text style={styles.uploadingText}>
+                  {uploadStage?.stage === 'error'
+                    ? `❌ ${uploadStage.message}`
+                    : uploadStage?.stage === 'completed'
+                    ? `✅ ${uploadStage.message}`
+                    : uploadStage?.message || 'Enviando arquivo...'}
+                </Text>
+                <Text style={styles.uploadingProgress}>
+                  {uploadStage?.progress ?? uploadProgress}%
+                </Text>
+              </View>
+
+              {/* Indicadores de etapas */}
+              <View style={styles.uploadingStages}>
+                <View style={styles.uploadingStage}>
+                  <Text style={[
+                    styles.uploadingStageIcon,
+                    (uploadStage?.progress ?? uploadProgress) > 10
+                      ? styles.uploadingStageCompleted
+                      : uploadStage?.stage === 'uploading'
+                      ? styles.uploadingStageActive
+                      : styles.uploadingStagePending
+                  ]}>
+                    {(uploadStage?.progress ?? uploadProgress) > 10 ? '✓' : '○'}
+                  </Text>
+                  <Text style={styles.uploadingStageText}>Recebendo</Text>
+                </View>
+
+                <View style={styles.uploadingStageLine} />
+
+                <View style={styles.uploadingStage}>
+                  <Text style={[
+                    styles.uploadingStageIcon,
+                    (uploadStage?.progress ?? 0) >= 50
+                      ? styles.uploadingStageCompleted
+                      : uploadStage?.stage === 's3_uploading' || uploadStage?.stage === 's3_completed'
+                      ? styles.uploadingStageActive
+                      : styles.uploadingStagePending
+                  ]}>
+                    {(uploadStage?.progress ?? 0) >= 50 ? '✓' : '○'}
+                  </Text>
+                  <Text style={styles.uploadingStageText}>Armazenando</Text>
+                </View>
+
+                <View style={styles.uploadingStageLine} />
+
+                <View style={styles.uploadingStage}>
+                  <Text style={[
+                    styles.uploadingStageIcon,
+                    (uploadStage?.progress ?? 0) >= 90
+                      ? styles.uploadingStageCompleted
+                      : uploadStage?.stage === 'whatsapp_sending'
+                      ? styles.uploadingStageActive
+                      : styles.uploadingStagePending
+                  ]}>
+                    {(uploadStage?.progress ?? 0) >= 90 ? '✓' : '○'}
+                  </Text>
+                  <Text style={styles.uploadingStageText}>Enviando</Text>
+                </View>
+
+                <View style={styles.uploadingStageLine} />
+
+                <View style={styles.uploadingStage}>
+                  <Text style={[
+                    styles.uploadingStageIcon,
+                    uploadStage?.stage === 'completed'
+                      ? styles.uploadingStageCompleted
+                      : uploadStage?.stage === 'error'
+                      ? styles.uploadingStageError
+                      : styles.uploadingStagePending
+                  ]}>
+                    {uploadStage?.stage === 'completed' ? '✓' : uploadStage?.stage === 'error' ? '✗' : '○'}
+                  </Text>
+                  <Text style={styles.uploadingStageText}>Concluído</Text>
+                </View>
+              </View>
+
+              {/* Barra de progresso */}
+              <View style={styles.uploadingProgressBar}>
+                <View
+                  style={[
+                    styles.uploadingProgressFill,
+                    {
+                      width: `${uploadStage?.progress ?? uploadProgress}%`,
+                      backgroundColor:
+                        uploadStage?.stage === 'error'
+                          ? '#ef4444'
+                          : uploadStage?.stage === 'completed'
+                          ? '#22c55e'
+                          : '#8b5cf6',
+                    },
+                  ]}
+                />
+              </View>
             </View>
           )}
 
@@ -765,19 +1038,24 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
           ) : (
             /* Input de mensagem normal */
             <View style={styles.inputContainer}>
-              {/* Botão de anexo */}
+              {/* Botão de anexo - bloqueado durante upload de mídia */}
               <TouchableOpacity
-                style={styles.attachButton}
+                style={[styles.attachButton, uploadingMedia && styles.attachButtonDisabled]}
                 onPress={() => {
-                  Alert.alert('Anexar', 'Escolha o tipo de arquivo', [
-                    { text: 'Foto/Vídeo', onPress: handlePickImage },
-                    { text: 'Documento', onPress: handlePickDocument },
+                  if (uploadingMedia) {
+                    Alert.alert('Aguarde', 'Já existe um arquivo sendo enviado');
+                    return;
+                  }
+                  Alert.alert('Anexar', 'Escolha uma opção', [
+                    { text: '📷 Tirar Foto', onPress: handleTakePhoto },
+                    { text: '🎥 Gravar Vídeo', onPress: handleRecordVideo },
+                    { text: '🖼️ Galeria', onPress: handlePickImage },
+                    { text: '📄 Documento', onPress: handlePickDocument },
                     { text: 'Cancelar', style: 'cancel' },
                   ]);
                 }}
-                disabled={sending || uploadingMedia}
               >
-                <Text style={styles.attachButtonText}>📎</Text>
+                <Text style={[styles.attachButtonText, uploadingMedia && styles.attachButtonTextDisabled]}>📎</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -821,7 +1099,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
           )}
         </View>
       ) : (
-        <View style={[styles.inputContainer, styles.inputContainerDisabled, { paddingBottom: Math.max(12, insets.bottom) }]}>
+        <View style={[styles.inputContainer, styles.inputContainerDisabled, { paddingBottom: keyboardVisible ? 0 : Math.max(12, insets.bottom) }]}>
           <Text style={styles.inputDisabledText}>
             {ticket.status === 'PENDING' ? 'Ticket aguardando atendimento' : 'Ticket encerrado'}
           </Text>
@@ -899,32 +1177,34 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
         }}
       />
 
-      <EmojiPicker
-        onEmojiSelected={(emoji) => {
-          setMessageText((prev) => prev + emoji.emoji);
-        }}
-        open={showEmojiPicker}
-        onClose={() => setShowEmojiPicker(false)}
-        enableSearchBar
-        enableRecentlyUsed
-        categoryPosition="top"
-        translation={{
-          search: 'Pesquisar',
-          categories: {
-            recently_used: 'Recentes',
-            smileys_emotion: 'Smileys',
-            people_body: 'Pessoas',
-            animals_nature: 'Animais',
-            food_drink: 'Comida',
-            travel_places: 'Viagem',
-            activities: 'Atividades',
-            objects: 'Objetos',
-            symbols: 'Símbolos',
-            flags: 'Bandeiras',
-          },
-        }}
-      />
     </KeyboardAvoidingView>
+
+    <EmojiPicker
+      onEmojiSelected={(emoji) => {
+        setMessageText((prev) => prev + emoji.emoji);
+      }}
+      open={showEmojiPicker}
+      onClose={() => setShowEmojiPicker(false)}
+      enableSearchBar
+      enableRecentlyUsed
+      categoryPosition="top"
+      translation={{
+        search: 'Pesquisar',
+        categories: {
+          recently_used: 'Recentes',
+          smileys_emotion: 'Smileys',
+          people_body: 'Pessoas',
+          animals_nature: 'Animais',
+          food_drink: 'Comida',
+          travel_places: 'Viagem',
+          activities: 'Atividades',
+          objects: 'Objetos',
+          symbols: 'Símbolos',
+          flags: 'Bandeiras',
+        },
+      }}
+    />
+    </Fragment>
   );
 }
 
@@ -1293,16 +1573,80 @@ const styles = StyleSheet.create({
   micButtonText: {
     fontSize: 20,
   },
-  uploadingBar: {
+  uploadingContainer: {
+    backgroundColor: '#f3f4f6',
+    borderRadius: 12,
+    padding: 12,
+    marginHorizontal: 12,
+    marginBottom: 8,
+  },
+  uploadingHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
     gap: 8,
+    marginBottom: 10,
   },
   uploadingText: {
+    flex: 1,
     fontSize: 13,
+    color: '#374151',
+  },
+  uploadingProgress: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8b5cf6',
+  },
+  uploadingStages: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  uploadingStage: {
+    alignItems: 'center',
+  },
+  uploadingStageIcon: {
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  uploadingStageText: {
+    fontSize: 10,
     color: '#6b7280',
+  },
+  uploadingStagePending: {
+    color: '#9ca3af',
+  },
+  uploadingStageActive: {
+    color: '#8b5cf6',
+    fontWeight: '600',
+  },
+  uploadingStageCompleted: {
+    color: '#22c55e',
+  },
+  uploadingStageError: {
+    color: '#ef4444',
+  },
+  uploadingStageLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#d1d5db',
+    marginHorizontal: 4,
+  },
+  uploadingProgressBar: {
+    height: 6,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  uploadingProgressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  attachButtonDisabled: {
+    opacity: 0.5,
+  },
+  attachButtonTextDisabled: {
+    opacity: 0.5,
   },
   recordingBar: {
     flexDirection: 'row',
