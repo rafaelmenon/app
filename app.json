@@ -29,7 +29,8 @@
         "backgroundColor": "#321e3c"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -38,6 +39,15 @@
       "eas": {
         "projectId": "1ebc05ee-780a-47c7-a6bf-4799c5792bb8"
       }
-    }
+    },
+    "plugins": [
+      [
+        "onesignal-expo-plugin",
+        {
+          "mode": "development",
+          "disableLocation": true
+        }
+      ]
+    ]
   }
 }

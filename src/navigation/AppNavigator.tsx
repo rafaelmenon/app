@@ -5,6 +5,7 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { LoginScreen, TicketsScreen, ChatScreen } from '../screens';
 import type { Ticket } from '../types';
+import { NotificationService } from '../services/oneSignalService';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -15,7 +16,7 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function AppNavigator() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
 
   if (loading) {
     return (
@@ -23,6 +24,10 @@ export function AppNavigator() {
         <ActivityIndicator size="large" color="#8b5cf6" />
       </View>
     );
+  }
+
+  if (isAuthenticated && user) {
+    NotificationService.initialize(user);
   }
 
   return (
