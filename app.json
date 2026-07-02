@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "7",
+      "buildNumber": "8",
       "bundleIdentifier": "com.whatsprofissional.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -23,7 +23,7 @@
     },
     "android": {
       "package": "com.whatsprofissional.app",
-      "versionCode": 6,
+      "versionCode": 7,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#321e3c"
