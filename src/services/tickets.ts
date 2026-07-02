@@ -8,6 +8,11 @@ export interface TicketsResponse {
 }
 
 export const ticketsService = {
+  async getTicketById(id: string): Promise<Ticket> {
+    const response = await api.get<{ ticket: Ticket }>(`/tickets/${id}`);
+    return response.data.ticket;
+  },
+
   async getTickets(
     status?: TicketStatus,
     page = 1,

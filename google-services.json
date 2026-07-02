@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "815093892416",
+    "project_id": "whats-profissional",
+    "storage_bucket": "whats-profissional.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:815093892416:android:caabc82fbc2a59b09fe6a5",
+        "android_client_info": {
+          "package_name": "com.whatsprofissional.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA309epaaH23986VRiT0p9W8ef8xg7o0kQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

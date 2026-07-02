@@ -2,7 +2,7 @@
   "expo": {
     "name": "WhatsProfissional",
     "slug": "whatsprofissional",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "6",
+      "buildNumber": "7",
       "bundleIdentifier": "com.whatsprofissional.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -23,7 +23,7 @@
     },
     "android": {
       "package": "com.whatsprofissional.app",
-      "versionCode": 5,
+      "versionCode": 6,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#321e3c"
@@ -44,7 +44,7 @@
       [
         "onesignal-expo-plugin",
         {
-          "mode": "development",
+          "mode": "production",
           "disableLocation": true
         }
       ]

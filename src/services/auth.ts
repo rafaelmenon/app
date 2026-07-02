@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "./api";
 import type { LoginCredentials, AuthResponse, User } from "../types";
+import { NotificationService } from './oneSignalService';
 
 export const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
@@ -16,6 +17,7 @@ export const authService = {
   async logout(): Promise<void> {
     try {
       await api.post("/auth/logout");
+      NotificationService.logoutUser();
     } catch (error) {
       console.error("Erro ao fazer logout no servidor:", error);
     } finally {

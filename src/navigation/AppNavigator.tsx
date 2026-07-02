@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { LoginScreen, TicketsScreen, ChatScreen } from '../screens';
 import type { Ticket } from '../types';
 import { NotificationService } from '../services/oneSignalService';
+import { navigationRef } from './navigationService';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -31,7 +32,7 @@ export function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
