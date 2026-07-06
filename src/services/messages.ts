@@ -149,4 +149,81 @@ export const messagesService = {
     const response = await api.post(`/messages/mark-as-read/${ticketId}`);
     return response.data;
   },
+
+  // Prepara uma mensagem de mídia (cria com status PROCESSING)
+  // A mensagem aparece imediatamente na conversa enquanto o upload acontece
+  async prepareMediaMessage(
+    ticketId: string,
+    fileName: string,
+    mimeType: string,
+    fileSize: number,
+    caption?: string
+  ): Promise<{
+    messageId: string;
+    data: Message;
+  }> {
+    const response = await api.post(`/messages/prepare-media/${ticketId}`, {
+      fileName,
+      mimeType,
+      fileSize,
+      caption,
+    });
+    return {
+      messageId: response.data.messageId,
+      data: response.data.data,
+    };
+  },
+
+  // Completa o upload da mídia (faz upload para S3 e envia para WhatsApp)
+  // Atualiza a mensagem existente com mediaUrl e evolutionId
+  async completeMediaUpload(
+    messageId: string,
+    fileUri: string,
+    fileName: string,
+    mimeType: string,
+    caption?: string,
+    onUploadProgress?: (progress: number) => void
+  ): Promise<{
+    message: string;
+    data: {
+      id: string;
+      evolutionId: string;
+      mediaUrl: string;
+      timestamp: string;
+      fileName: string;
+      status: string;
+    };
+  }> {
+    const formData = new FormData();
+
+    formData.append('file', {
+      uri: fileUri,
+      name: fileName,
+      type: mimeType,
+    } as any);
+
+    if (caption) {
+      formData.append('caption', caption);
+    }
+
+    const response = await api.post(
+      `/messages/complete-media/${messageId}`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 600000, // 10 minutos para arquivos grandes
+        onUploadProgress: (progressEvent) => {
+          if (onUploadProgress && progressEvent.total) {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            onUploadProgress(percentCompleted);
+          }
+        },
+      }
+    );
+    return response.data;
+  },
 };

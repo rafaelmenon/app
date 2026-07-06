@@ -63,7 +63,7 @@ export interface Queue {
 }
 
 export type MessageType = 'TEXT' | 'IMAGE' | 'AUDIO' | 'VIDEO' | 'DOCUMENT' | 'STICKER' | 'LOCATION' | 'CONTACT' | 'SYSTEM'
-export type MessageStatus = 'PENDING' | 'SENT' | 'DELIVERED' | 'READ'
+export type MessageStatus = 'PENDING' | 'SENT' | 'DELIVERED' | 'READ' | 'PROCESSING'
 
 export interface Message {
   id: string

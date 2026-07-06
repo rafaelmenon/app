@@ -19,8 +19,8 @@ export const useSocket = (props: UseSocketProps) => {
     }
 
     // Conectar ao servidor Socket.IO
-    const socketUrl = "https://api-v2.whatsprofissional.com";
-    // const socketUrl = "https://b7e4-45-234-3-177.ngrok-free.app";
+    // const socketUrl = "https://api-v2.whatsprofissional.com";
+    const socketUrl = "https://bda8-45-234-1-9.ngrok-free.app";
 
     http: socket.current = io(socketUrl, {
       transports: ["websocket", "polling"],

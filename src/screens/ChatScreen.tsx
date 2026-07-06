@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef, Fragment } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  Fragment,
+} from "react";
 import {
   View,
   Text,
@@ -14,28 +20,33 @@ import {
   Linking,
   Alert,
   Keyboard,
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Video, ResizeMode, Audio } from 'expo-av';
-import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker';
-import EmojiPicker from 'rn-emoji-keyboard';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useSocket } from '../hooks';
-import { useAuth } from '../contexts/AuthContext';
-import { messagesService, MediaUploadProgress } from '../services/messages';
-import { AudioPlayer, ContactMessage, DocumentMessage, TransferTicketModal } from '../components';
-import { ChatConfigModal } from './components/ChatConfigModal';
-import type { Message } from '../types';
-import { Feather } from '@expo/vector-icons';
-import type { RootStackParamList } from '../navigation/AppNavigator';
-import { format } from 'date-fns';
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Video, ResizeMode, Audio } from "expo-av";
+import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
+import EmojiPicker from "rn-emoji-keyboard";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useSocket } from "../hooks";
+import { useAuth } from "../contexts/AuthContext";
+import { messagesService, MediaUploadProgress } from "../services/messages";
+import {
+  AudioPlayer,
+  ContactMessage,
+  DocumentMessage,
+  TransferTicketModal,
+} from "../components";
+import { ChatConfigModal } from "./components/ChatConfigModal";
+import type { Message } from "../types";
+import { Feather } from "@expo/vector-icons";
+import type { RootStackParamList } from "../navigation/AppNavigator";
+import { format } from "date-fns";
 
-type ChatScreenProps = NativeStackScreenProps<RootStackParamList, 'Chat'>;
+type ChatScreenProps = NativeStackScreenProps<RootStackParamList, "Chat">;
 
-const STORAGE_KEY_SIGNATURE = 'signatureEnabled';
-const STORAGE_KEY_WHISPER = 'whisperEnabled';
+const STORAGE_KEY_SIGNATURE = "signatureEnabled";
+const STORAGE_KEY_WHISPER = "whisperEnabled";
 
 export function ChatScreen({ route, navigation }: ChatScreenProps) {
   const { ticket } = route.params;
@@ -44,7 +55,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [messageText, setMessageText] = useState('');
+  const [messageText, setMessageText] = useState("");
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -56,7 +67,9 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   const [recordingTime, setRecordingTime] = useState(0);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadStage, setUploadStage] = useState<MediaUploadProgress | null>(null);
+  const [uploadStage, setUploadStage] = useState<MediaUploadProgress | null>(
+    null
+  );
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showAttachModal, setShowAttachModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -85,7 +98,11 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
         isLoadingMoreRef.current = true;
       }
 
-      const response = await messagesService.getMessagesByTicket(ticket.id, pageNum, 20);
+      const response = await messagesService.getMessagesByTicket(
+        ticket.id,
+        pageNum,
+        20
+      );
 
       setMessages((prev) => {
         if (append) {
@@ -99,7 +116,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
       setHasMore(response.hasMore);
       setPage(pageNum);
     } catch (error) {
-      console.error('Erro ao carregar mensagens:', error);
+      console.error("Erro ao carregar mensagens:", error);
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -118,7 +135,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
 
   // Carregar preferência de assinatura do AsyncStorage
   useEffect(() => {
-    if (user?.type === 'USER') {
+    if (user?.type === "USER") {
       setSignatureEnabled(true);
       return;
     }
@@ -137,11 +154,11 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   // Detectar quando o teclado abre/fecha para ajustar padding
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
       () => setKeyboardVisible(true)
     );
     const keyboardDidHideListener = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
       () => setKeyboardVisible(false)
     );
 
@@ -163,18 +180,25 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   // Socket event handler para novas mensagens
   const handleNewMessage = useCallback(
     (data: { message: Message; companyId?: string }) => {
-     
       // Verificar se a mensagem é do ticket atual
       if (data.message.ticketId === ticket.id) {
-       
         setMessages((prev) => {
           // Verificar se a mensagem já existe na lista
-          const messageExists = prev.some(msg => msg.id === data.message.id);
-          if (messageExists) {
-            
-            return prev;
+          const existingIndex = prev.findIndex(
+            (msg) => msg.id === data.message.id
+          );
+
+          if (existingIndex !== -1) {
+            // Mensagem já existe - atualizar com os novos dados (ex: PROCESSING -> SENT)
+            const updated = [...prev];
+            updated[existingIndex] = {
+              ...prev[existingIndex],
+              ...data.message,
+            };
+            return updated;
           }
-         
+
+          // Mensagem nova - adicionar à lista
           return [...prev, data.message];
         });
         // Scroll para o final
@@ -190,13 +214,34 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
 
   // Socket event handler para atualização de status
   const handleMessageStatusUpdate = useCallback(
-    (data: { messageId: string; status: string; ticketId: string; companyId?: string }) => {
-
+    (data: {
+      messageId: string;
+      status: string;
+      ticketId: string;
+      companyId?: string;
+    }) => {
       // Só atualizar se for do ticket atual
       if (data.ticketId === ticket.id) {
         setMessages((prev) =>
           prev.map((msg) =>
-            msg.id === data.messageId ? { ...msg, status: data.status as any } : msg
+            msg.id === data.messageId
+              ? { ...msg, status: data.status as any }
+              : msg
+          )
+        );
+      }
+    },
+    [ticket.id]
+  );
+
+  // Socket event handler para atualização de mensagem (quando upload completa)
+  const handleMessageUpdated = useCallback(
+    (data: { message: Message; companyId?: string }) => {
+      // Só atualizar se for do ticket atual
+      if (data.message.ticketId === ticket.id) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === data.message.id ? { ...msg, ...data.message } : msg
           )
         );
       }
@@ -214,7 +259,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
       setUploadStage(data);
 
       // Se completou ou deu erro, limpar após alguns segundos
-      if (data.stage === 'completed' || data.stage === 'error') {
+      if (data.stage === "completed" || data.stage === "error") {
         setTimeout(() => {
           setUploadStage(null);
           setUploadingMedia(false);
@@ -226,21 +271,28 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   );
 
   useEffect(() => {
-
-    on('message_created', handleNewMessage);
-    on('message_status_update', handleMessageStatusUpdate);
-    on('media_upload_progress', handleMediaUploadProgress);
+    on("message_created", handleNewMessage);
+    on("message_status_update", handleMessageStatusUpdate);
+    on("message_updated", handleMessageUpdated);
+    on("media_upload_progress", handleMediaUploadProgress);
 
     return () => {
-
-      off('message_created', handleNewMessage);
-      off('message_status_update', handleMessageStatusUpdate);
-      off('media_upload_progress', handleMediaUploadProgress);
+      off("message_created", handleNewMessage);
+      off("message_status_update", handleMessageStatusUpdate);
+      off("message_updated", handleMessageUpdated);
+      off("media_upload_progress", handleMediaUploadProgress);
     };
-  }, [on, off, handleNewMessage, handleMessageStatusUpdate, handleMediaUploadProgress]);
+  }, [
+    on,
+    off,
+    handleNewMessage,
+    handleMessageStatusUpdate,
+    handleMessageUpdated,
+    handleMediaUploadProgress,
+  ]);
 
   const handleSignatureToggle = (enabled: boolean) => {
-    if (user?.type === 'USER') return;
+    if (user?.type === "USER") return;
     setSignatureEnabled(enabled);
     AsyncStorage.setItem(STORAGE_KEY_SIGNATURE, JSON.stringify(enabled));
   };
@@ -262,14 +314,18 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
         messageContent = `*${user.name}:*\n${messageContent}`;
       }
 
-      await messagesService.sendTextMessage(ticket.id, messageContent, whisperMode);
-      setMessageText('');
+      await messagesService.sendTextMessage(
+        ticket.id,
+        messageContent,
+        whisperMode
+      );
+      setMessageText("");
       // Scroll para o final após enviar
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
     } catch (error) {
-      console.error('Erro ao enviar mensagem:', error);
+      console.error("Erro ao enviar mensagem:", error);
     } finally {
       setSending(false);
     }
@@ -300,7 +356,10 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
       if (heightDifference > 0) {
         const newOffset = scrollOffsetRef.current + heightDifference;
         setTimeout(() => {
-          flatListRef.current?.scrollToOffset({ offset: newOffset, animated: false });
+          flatListRef.current?.scrollToOffset({
+            offset: newOffset,
+            animated: false,
+          });
         }, 100);
       }
     }
@@ -312,42 +371,48 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
 
   const getMimeType = (uri: string, type?: string): string => {
     if (type) return type;
-    const ext = uri.split('.').pop()?.toLowerCase() || '';
+    const ext = uri.split(".").pop()?.toLowerCase() || "";
     const mimeMap: Record<string, string> = {
-      jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif',
-      webp: 'image/webp', mp4: 'video/mp4', mov: 'video/quicktime', avi: 'video/x-msvideo',
-      pdf: 'application/pdf', doc: 'application/msword',
-      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      xls: 'application/vnd.ms-excel',
-      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      zip: 'application/zip', rar: 'application/x-rar', '7z': 'application/x-7z-compressed',
-      mp3: 'audio/mpeg', wav: 'audio/wav', m4a: 'audio/mp4',
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      png: "image/png",
+      gif: "image/gif",
+      webp: "image/webp",
+      mp4: "video/mp4",
+      mov: "video/quicktime",
+      avi: "video/x-msvideo",
+      pdf: "application/pdf",
+      doc: "application/msword",
+      docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      xls: "application/vnd.ms-excel",
+      xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      zip: "application/zip",
+      rar: "application/x-rar",
+      "7z": "application/x-7z-compressed",
+      mp3: "audio/mpeg",
+      wav: "audio/wav",
+      m4a: "audio/mp4",
     };
-    return mimeMap[ext] || 'application/octet-stream';
+    return mimeMap[ext] || "application/octet-stream";
   };
 
   // Tirar foto pela câmera e enviar
   const handleTakePhoto = async () => {
-    // Não permitir tirar foto durante upload
-    if (uploadingMedia) {
-      Alert.alert('Aguarde', 'Já existe um arquivo sendo enviado');
-      return;
-    }
-
     try {
       // Solicitar permissão da câmera
-      const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+      const cameraPermission =
+        await ImagePicker.requestCameraPermissionsAsync();
       if (!cameraPermission.granted) {
         Alert.alert(
-          'Permissão necessária',
-          'Permita o acesso à câmera para tirar fotos',
-          [{ text: 'OK' }]
+          "Permissão necessária",
+          "Permita o acesso à câmera para tirar fotos",
+          [{ text: "OK" }]
         );
         return;
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ["images"],
         quality: 0.8,
         allowsEditing: false,
       });
@@ -355,52 +420,62 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
       if (result.canceled || !result.assets?.length) return;
 
       const asset = result.assets[0];
-      setUploadingMedia(true);
-      setUploadProgress(0);
-
-      const mimeType = asset.mimeType || 'image/jpeg';
+      const mimeType = asset.mimeType || "image/jpeg";
       const fileName = `foto_${Date.now()}.jpg`;
+      const fileSize = asset.fileSize || 0;
 
-      // Enviar usando FormData
-      await messagesService.sendMediaMessage(
-        ticket.id,
-        asset.uri,
-        fileName,
-        mimeType,
-        undefined,
-        (progress) => setUploadProgress(progress)
-      );
+      // Passo 1: Criar mensagem com status PROCESSING
+      // O socket vai receber message_created e adicionar à lista automaticamente
+      const { data: backendMessage } =
+        await messagesService.prepareMediaMessage(
+          ticket.id,
+          fileName,
+          mimeType,
+          fileSize,
+          undefined
+        );
+
+      // Passo 2: Completar upload em background (não bloqueia a UI)
+      messagesService
+        .completeMediaUpload(
+          backendMessage.id,
+          asset.uri,
+          fileName,
+          mimeType,
+          undefined,
+          (progress) => setUploadProgress(progress)
+        )
+        .catch((error) => {
+          console.error("Erro ao completar upload da foto:", error);
+          // Remover mensagem com erro
+          setMessages((prev) =>
+            prev.filter((msg) => msg.id !== backendMessage.id)
+          );
+          Alert.alert("Erro", "Não foi possível enviar a foto");
+        });
     } catch (error: any) {
-      console.error('Erro ao tirar foto:', error);
-      Alert.alert('Erro', 'Não foi possível tirar a foto');
-      setUploadingMedia(false);
-      setUploadProgress(0);
-      setUploadStage(null);
+      console.error("Erro ao tirar foto:", error);
+      Alert.alert("Erro", "Não foi possível tirar a foto");
     }
   };
 
   // Gravar vídeo pela câmera e enviar
   const handleRecordVideo = async () => {
-    // Não permitir gravar vídeo durante upload
-    if (uploadingMedia) {
-      Alert.alert('Aguarde', 'Já existe um arquivo sendo enviado');
-      return;
-    }
-
     try {
       // Solicitar permissões de câmera e microfone
-      const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+      const cameraPermission =
+        await ImagePicker.requestCameraPermissionsAsync();
       if (!cameraPermission.granted) {
         Alert.alert(
-          'Permissão necessária',
-          'Permita o acesso à câmera para gravar vídeos',
-          [{ text: 'OK' }]
+          "Permissão necessária",
+          "Permita o acesso à câmera para gravar vídeos",
+          [{ text: "OK" }]
         );
         return;
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['videos'],
+        mediaTypes: ["videos"],
         quality: 0.7,
         videoMaxDuration: 60, // Máximo de 60 segundos
       });
@@ -408,41 +483,49 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
       if (result.canceled || !result.assets?.length) return;
 
       const asset = result.assets[0];
-      setUploadingMedia(true);
-      setUploadProgress(0);
-
-      const mimeType = asset.mimeType || 'video/mp4';
+      const mimeType = asset.mimeType || "video/mp4";
       const fileName = `video_${Date.now()}.mp4`;
+      const fileSize = asset.fileSize || 0;
 
-      // Enviar usando FormData
-      await messagesService.sendMediaMessage(
-        ticket.id,
-        asset.uri,
-        fileName,
-        mimeType,
-        undefined,
-        (progress) => setUploadProgress(progress)
-      );
+      // Passo 1: Criar mensagem com status PROCESSING
+      // O socket vai receber message_created e adicionar à lista automaticamente
+      const { data: backendMessage } =
+        await messagesService.prepareMediaMessage(
+          ticket.id,
+          fileName,
+          mimeType,
+          fileSize,
+          undefined
+        );
+
+      // Passo 2: Completar upload em background (não bloqueia a UI)
+      messagesService
+        .completeMediaUpload(
+          backendMessage.id,
+          asset.uri,
+          fileName,
+          mimeType,
+          undefined,
+          (progress) => setUploadProgress(progress)
+        )
+        .catch((error) => {
+          console.error("Erro ao completar upload do vídeo:", error);
+          setMessages((prev) =>
+            prev.filter((msg) => msg.id !== backendMessage.id)
+          );
+          Alert.alert("Erro", "Não foi possível enviar o vídeo");
+        });
     } catch (error: any) {
-      console.error('Erro ao gravar vídeo:', error);
-      Alert.alert('Erro', 'Não foi possível gravar o vídeo');
-      setUploadingMedia(false);
-      setUploadProgress(0);
-      setUploadStage(null);
+      console.error("Erro ao gravar vídeo:", error);
+      Alert.alert("Erro", "Não foi possível gravar o vídeo");
     }
   };
 
   // Selecionar da galeria
   const handlePickImage = async () => {
-    // Não permitir selecionar nova mídia durante upload
-    if (uploadingMedia) {
-      Alert.alert('Aguarde', 'Já existe um arquivo sendo enviado');
-      return;
-    }
-
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images', 'videos'],
+        mediaTypes: ["images", "videos"],
         quality: 0.8,
         allowsMultipleSelection: false,
       });
@@ -450,37 +533,47 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
       if (result.canceled || !result.assets?.length) return;
 
       const asset = result.assets[0];
-      setUploadingMedia(true);
-      setUploadProgress(0);
-
       const mimeType = asset.mimeType || getMimeType(asset.uri);
-      const fileName = asset.fileName || `media_${Date.now()}.${mimeType.split('/')[1] || 'jpg'}`;
+      const fileName =
+        asset.fileName ||
+        `media_${Date.now()}.${mimeType.split("/")[1] || "jpg"}`;
+      const fileSize = asset.fileSize || 0;
 
-      // Enviar usando FormData (mais eficiente que Base64)
-      await messagesService.sendMediaMessage(
-        ticket.id,
-        asset.uri,
-        fileName,
-        mimeType,
-        undefined,
-        (progress) => setUploadProgress(progress)
-      );
+      // Passo 1: Criar mensagem com status PROCESSING
+      // O socket vai receber message_created e adicionar à lista automaticamente
+      const { data: backendMessage } =
+        await messagesService.prepareMediaMessage(
+          ticket.id,
+          fileName,
+          mimeType,
+          fileSize,
+          undefined
+        );
+
+      // Passo 2: Completar upload em background (não bloqueia a UI)
+      messagesService
+        .completeMediaUpload(
+          backendMessage.id,
+          asset.uri,
+          fileName,
+          mimeType,
+          undefined,
+          (progress) => setUploadProgress(progress)
+        )
+        .catch((error) => {
+          console.error("Erro ao completar upload da imagem/vídeo:", error);
+          setMessages((prev) =>
+            prev.filter((msg) => msg.id !== backendMessage.id)
+          );
+          Alert.alert("Erro", "Não foi possível enviar o arquivo");
+        });
     } catch (error: any) {
-      console.error('Erro ao enviar imagem/vídeo:', error);
-      Alert.alert('Erro', 'Não foi possível enviar o arquivo');
-      setUploadingMedia(false);
-      setUploadProgress(0);
-      setUploadStage(null);
+      console.error("Erro ao enviar imagem/vídeo:", error);
+      Alert.alert("Erro", "Não foi possível enviar o arquivo");
     }
   };
 
   const handlePickDocument = async () => {
-    // Não permitir selecionar nova mídia durante upload
-    if (uploadingMedia) {
-      Alert.alert('Aguarde', 'Já existe um arquivo sendo enviado');
-      return;
-    }
-
     try {
       const result = await DocumentPicker.getDocumentAsync({
         copyToCacheDirectory: true,
@@ -489,27 +582,41 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
       if (result.canceled || !result.assets?.length) return;
 
       const asset = result.assets[0];
-      setUploadingMedia(true);
-      setUploadProgress(0);
-
       const mimeType = asset.mimeType || getMimeType(asset.uri);
       const fileName = asset.name || `document_${Date.now()}`;
+      const fileSize = asset.size || 0;
 
-      // Enviar usando FormData (mais eficiente que Base64)
-      await messagesService.sendMediaMessage(
-        ticket.id,
-        asset.uri,
-        fileName,
-        mimeType,
-        undefined,
-        (progress) => setUploadProgress(progress)
-      );
+      // Passo 1: Criar mensagem com status PROCESSING
+      // O socket vai receber message_created e adicionar à lista automaticamente
+      const { data: backendMessage } =
+        await messagesService.prepareMediaMessage(
+          ticket.id,
+          fileName,
+          mimeType,
+          fileSize,
+          undefined
+        );
+
+      // Passo 2: Completar upload em background (não bloqueia a UI)
+      messagesService
+        .completeMediaUpload(
+          backendMessage.id,
+          asset.uri,
+          fileName,
+          mimeType,
+          undefined,
+          (progress) => setUploadProgress(progress)
+        )
+        .catch((error) => {
+          console.error("Erro ao completar upload do documento:", error);
+          setMessages((prev) =>
+            prev.filter((msg) => msg.id !== backendMessage.id)
+          );
+          Alert.alert("Erro", "Não foi possível enviar o documento");
+        });
     } catch (error: any) {
-      console.error('Erro ao enviar documento:', error);
-      Alert.alert('Erro', 'Não foi possível enviar o documento');
-      setUploadingMedia(false);
-      setUploadProgress(0);
-      setUploadStage(null);
+      console.error("Erro ao enviar documento:", error);
+      Alert.alert("Erro", "Não foi possível enviar o documento");
     }
   };
 
@@ -517,7 +624,10 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
     try {
       const permission = await Audio.requestPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert('Permissão necessária', 'Permita o acesso ao microfone para gravar áudio');
+        Alert.alert(
+          "Permissão necessária",
+          "Permita o acesso ao microfone para gravar áudio"
+        );
         return;
       }
 
@@ -538,8 +648,8 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
         setRecordingTime((prev) => prev + 1);
       }, 1000);
     } catch (error) {
-      console.error('Erro ao iniciar gravação:', error);
-      Alert.alert('Erro', 'Não foi possível iniciar a gravação');
+      console.error("Erro ao iniciar gravação:", error);
+      Alert.alert("Erro", "Não foi possível iniciar a gravação");
     }
   };
 
@@ -554,7 +664,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
       setRecordingTime(0);
       await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
     } catch (error) {
-      console.error('Erro ao cancelar gravação:', error);
+      console.error("Erro ao cancelar gravação:", error);
     }
   };
 
@@ -571,51 +681,80 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
       await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
 
       if (!uri) {
-        Alert.alert('Erro', 'Não foi possível obter a gravação');
+        Alert.alert("Erro", "Não foi possível obter a gravação");
         return;
       }
 
-      setUploadingMedia(true);
-      setUploadProgress(0);
+      const fileName = `audio_${Date.now()}.m4a`;
+      const mimeType = "audio/mp4";
 
-      // Enviar usando FormData (mais eficiente que Base64)
-      await messagesService.sendAudioMessage(ticket.id, uri);
+      // Passo 1: Criar mensagem com status PROCESSING
+      // O socket vai receber message_created e adicionar à lista automaticamente
+      const { data: backendMessage } =
+        await messagesService.prepareMediaMessage(
+          ticket.id,
+          fileName,
+          mimeType,
+          0, // Não temos o tamanho exato do áudio
+          undefined
+        );
+
+      // Passo 2: Completar upload em background (não bloqueia a UI)
+      messagesService
+        .completeMediaUpload(
+          backendMessage.id,
+          uri,
+          fileName,
+          mimeType,
+          undefined,
+          (progress) => setUploadProgress(progress)
+        )
+        .catch((error) => {
+          console.error("Erro ao completar upload do áudio:", error);
+          setMessages((prev) =>
+            prev.filter((msg) => msg.id !== backendMessage.id)
+          );
+          Alert.alert("Erro", "Não foi possível enviar o áudio");
+        });
     } catch (error: any) {
-      console.error('Erro ao enviar áudio:', error);
-      Alert.alert('Erro', 'Não foi possível enviar o áudio');
-      setUploadingMedia(false);
-      setUploadProgress(0);
-      setUploadStage(null);
+      console.error("Erro ao enviar áudio:", error);
+      Alert.alert("Erro", "Não foi possível enviar o áudio");
     }
   };
 
   const formatRecordingTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-    const s = (seconds % 60).toString().padStart(2, '0');
+    const m = Math.floor(seconds / 60)
+      .toString()
+      .padStart(2, "0");
+    const s = (seconds % 60).toString().padStart(2, "0");
     return `${m}:${s}`;
   };
 
   const formatMessageTime = (timestamp: string) => {
-    return format(new Date(timestamp), 'HH:mm');
+    return format(new Date(timestamp), "HH:mm");
   };
 
   const renderMessageStatus = (status: string) => {
-    const isRead = status === 'READ';
-    const color = isRead ? '#3b82f6' : '#6b7280';
+    const isRead = status === "READ";
+    const color = isRead ? "#3b82f6" : "#6b7280";
 
-    if (status === 'PENDING') {
+    if (status === "PENDING") {
       return <Text style={[styles.messageStatus, { color }]}>🕐</Text>;
     }
 
-    if (status === 'SENT') {
+    if (status === "SENT") {
       return <Text style={[styles.messageStatus, { color }]}>✓</Text>;
     }
 
     // DELIVERED e READ - dois checks sobrepostos
     return (
       <View style={styles.doubleCheckContainer}>
-        <Text style={[styles.doubleCheck, styles.doubleCheckFirst, { color }]}>✓</Text>
-        <Text style={[styles.doubleCheck, styles.doubleCheckSecond, { color }]}>✓</Text>
+        <Text style={[styles.doubleCheck, styles.doubleCheckFirst, { color }]}>
+          ✓
+        </Text>
+        <Text style={[styles.doubleCheck, styles.doubleCheckSecond, { color }]}>
+          ✓
+        </Text>
       </View>
     );
   };
@@ -656,8 +795,40 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
 
   const renderMessage = ({ item }: { item: Message }) => {
     const isFromMe = item.fromMe;
-    const isSystemMessage = item.type === 'SYSTEM';
+    const isSystemMessage = item.type === "SYSTEM";
     const isWhisper = item.isWhisper;
+
+    // Placeholder para mídia em upload (status PROCESSING sem mediaUrl)
+    if (item.status === "PROCESSING" && !item.mediaUrl) {
+      const mediaTypeLabel =
+        item.type === "VIDEO"
+          ? "vídeo"
+          : item.type === "IMAGE"
+          ? "imagem"
+          : item.type === "AUDIO"
+          ? "áudio"
+          : "arquivo";
+
+      return (
+        <View style={[styles.messageContainer, styles.messageFromMe]}>
+          <View style={styles.uploadingMessageBubble}>
+            <ActivityIndicator
+              size="small"
+              color="#3b82f6"
+              style={{ marginBottom: 8 }}
+            />
+            <Text style={styles.uploadingMessageText}>
+              Enviando {mediaTypeLabel}...
+            </Text>
+            {item.fileName && (
+              <Text style={styles.uploadingMessageFileName} numberOfLines={1}>
+                {item.fileName}
+              </Text>
+            )}
+          </View>
+        </View>
+      );
+    }
 
     // Mensagem do sistema (centralizada)
     if (isSystemMessage) {
@@ -678,7 +849,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
     }
 
     // Mensagem de áudio
-    if (item.type === 'AUDIO' && item.mediaUrl) {
+    if (item.type === "AUDIO" && item.mediaUrl) {
       return (
         <View
           style={[
@@ -686,13 +857,17 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
             isFromMe ? styles.messageFromMe : styles.messageFromContact,
           ]}
         >
-          <AudioPlayer audioUrl={item.mediaUrl} messageId={item.id} isFromMe={isFromMe} />
+          <AudioPlayer
+            audioUrl={item.mediaUrl}
+            messageId={item.id}
+            isFromMe={isFromMe}
+          />
         </View>
       );
     }
 
     // Mensagem com imagem
-    if (item.type === 'IMAGE' && item.mediaUrl) {
+    if (item.type === "IMAGE" && item.mediaUrl) {
       return (
         <View
           style={[
@@ -715,11 +890,19 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
                 style={styles.messageImage}
                 resizeMode="cover"
               />
-              {item.content && item.content !== '[Imagem]' && (
-                renderTextWithLinks(item.content, isFromMe ? '#111827' : '#ffffff')
-              )}
+              {item.content &&
+                item.content !== "[Imagem]" &&
+                renderTextWithLinks(
+                  item.content,
+                  isFromMe ? "#111827" : "#ffffff"
+                )}
               <View style={styles.messageFooter}>
-                <Text style={[styles.messageTime, { color: isFromMe ? '#6b7280' : '#93c5fd' }]}>
+                <Text
+                  style={[
+                    styles.messageTime,
+                    { color: isFromMe ? "#6b7280" : "#93c5fd" },
+                  ]}
+                >
                   {formatMessageTime(item.timestamp)}
                 </Text>
                 {isFromMe && item.status && renderMessageStatus(item.status)}
@@ -731,7 +914,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
     }
 
     // Mensagem com vídeo
-    if (item.type === 'VIDEO' && item.mediaUrl) {
+    if (item.type === "VIDEO" && item.mediaUrl) {
       return (
         <View
           style={[
@@ -752,11 +935,19 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
               resizeMode={ResizeMode.CONTAIN}
               shouldPlay={false}
             />
-            {item.content && item.content !== '[Vídeo]' && (
-              renderTextWithLinks(item.content, isFromMe ? '#111827' : '#ffffff')
-            )}
+            {item.content &&
+              item.content !== "[Vídeo]" &&
+              renderTextWithLinks(
+                item.content,
+                isFromMe ? "#111827" : "#ffffff"
+              )}
             <View style={styles.messageFooter}>
-              <Text style={[styles.messageTime, { color: isFromMe ? '#6b7280' : '#93c5fd' }]}>
+              <Text
+                style={[
+                  styles.messageTime,
+                  { color: isFromMe ? "#6b7280" : "#93c5fd" },
+                ]}
+              >
                 {formatMessageTime(item.timestamp)}
               </Text>
               {isFromMe && item.status && renderMessageStatus(item.status)}
@@ -767,7 +958,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
     }
 
     // Mensagem de contato (vCard)
-    if (item.type === 'CONTACT') {
+    if (item.type === "CONTACT") {
       return (
         <View
           style={[
@@ -778,7 +969,12 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
           <View>
             <ContactMessage content={item.content} isFromMe={isFromMe} />
             <View style={[styles.messageFooter, { marginTop: 4 }]}>
-              <Text style={[styles.messageTime, { color: isFromMe ? '#6b7280' : '#93c5fd' }]}>
+              <Text
+                style={[
+                  styles.messageTime,
+                  { color: isFromMe ? "#6b7280" : "#93c5fd" },
+                ]}
+              >
                 {formatMessageTime(item.timestamp)}
               </Text>
               {isFromMe && item.status && renderMessageStatus(item.status)}
@@ -789,7 +985,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
     }
 
     // Mensagem de documento
-    if (item.type === 'DOCUMENT' && item.mediaUrl && item.fileName) {
+    if (item.type === "DOCUMENT" && item.mediaUrl && item.fileName) {
       return (
         <View
           style={[
@@ -804,7 +1000,12 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
               isFromMe={isFromMe}
             />
             <View style={[styles.messageFooter, { marginTop: 4 }]}>
-              <Text style={[styles.messageTime, { color: isFromMe ? '#6b7280' : '#93c5fd' }]}>
+              <Text
+                style={[
+                  styles.messageTime,
+                  { color: isFromMe ? "#6b7280" : "#93c5fd" },
+                ]}
+              >
                 {formatMessageTime(item.timestamp)}
               </Text>
               {isFromMe && item.status && renderMessageStatus(item.status)}
@@ -835,9 +1036,17 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
               <Text style={styles.whisperLabel}>Sussurro interno</Text>
             </View>
           )}
-          {renderTextWithLinks(item.content, isWhisper ? '#7c3aed' : isFromMe ? '#111827' : '#ffffff')}
+          {renderTextWithLinks(
+            item.content,
+            isWhisper ? "#7c3aed" : isFromMe ? "#111827" : "#ffffff"
+          )}
           <View style={styles.messageFooter}>
-            <Text style={[styles.messageTime, { color: isFromMe ? '#6b7280' : '#93c5fd' }]}>
+            <Text
+              style={[
+                styles.messageTime,
+                { color: isFromMe ? "#6b7280" : "#93c5fd" },
+              ]}
+            >
               {formatMessageTime(item.timestamp)}
             </Text>
             {isFromMe && item.status && renderMessageStatus(item.status)}
@@ -849,436 +1058,524 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
 
   return (
     <Fragment>
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>←</Text>
-        </TouchableOpacity>
-
-        {/* Avatar do contato */}
-        <TouchableOpacity
-          style={styles.avatarContainer}
-          onPress={() => ticket.contact.profilePicture && setShowProfilePicture(true)}
-          disabled={!ticket.contact.profilePicture}
-        >
-          {ticket.contact.profilePicture ? (
-            <Image
-              source={{ uri: ticket.contact.profilePicture }}
-              style={styles.avatar}
-            />
-          ) : (
-            <View style={styles.avatarPlaceholder}>
-              <Text style={styles.avatarText}>
-                {ticket.contact.name.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
-
-        <View style={styles.headerInfo}>
-          <Text style={styles.contactName}>{ticket.contact.name}</Text>
-          <Text style={styles.contactPhone}>{ticket.contact.phone}</Text>
-        </View>
-
-        {/* Botao de Transferir */}
-        <TouchableOpacity
-          style={styles.transferButton}
-          onPress={() => setShowTransferModal(true)}
-        >
-          <View style={styles.transferIconContainer}>
-            <View style={styles.transferUserIcon}>
-              <View style={styles.transferUserHead} />
-              <View style={styles.transferUserBody} />
-            </View>
-            <Text style={styles.transferArrow}>→</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
-
-      {/* Messages List */}
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#8b5cf6" />
-        </View>
-      ) : (
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={(item) => item.id}
-          renderItem={renderMessage}
-          onScroll={handleScroll}
-          scrollEventThrottle={400}
-          onContentSizeChange={handleContentSizeChange}
-          ListHeaderComponent={
-            loadingMore ? (
-              <ActivityIndicator size="small" color="#8b5cf6" style={styles.loadingMore} />
-            ) : null
-          }
-          contentContainerStyle={styles.messagesList}
-        />
-      )}
-
-      {/* Input Area */}
-      {ticket.status === 'OPEN' ? (
-        <View style={[styles.inputWrapper, { paddingBottom: keyboardVisible ? 0 : Math.max(12, insets.bottom) }]}>
-          {/* Linha de ações: Config + Attach */}
-          <View style={[styles.topRow, isRecording && { opacity: 0.4 }]}>
-            
-          <TouchableOpacity
-              style={[styles.attachButton, (uploadingMedia || isRecording) && styles.attachButtonDisabled]}
-              onPress={() => {
-                if (uploadingMedia) {
-                  Alert.alert('Aguarde', 'Já existe um arquivo sendo enviado');
-                  return;
-                }
-                setShowAttachModal(true);
-              }}
-              disabled={isRecording}
-            >
-              <Text style={[styles.attachButtonText, (uploadingMedia || isRecording) && styles.attachButtonTextDisabled]}>📎</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={styles.configButton}
-              onPress={() => setShowConfigModal(true)}
-              disabled={isRecording}
-            >
-              <Text style={styles.configButtonText}>⚙️</Text>
-            </TouchableOpacity>
-
-            
-          </View>
-
-          {/* Upload progress - barra de progresso detalhada */}
-          {uploadingMedia && (
-            <View style={styles.uploadingContainer}>
-              {/* Mensagem de status atual */}
-              <View style={styles.uploadingHeader}>
-                <ActivityIndicator size="small" color="#8b5cf6" />
-                <Text style={styles.uploadingText}>
-                  {uploadStage?.stage === 'error'
-                    ? `❌ ${uploadStage.message}`
-                    : uploadStage?.stage === 'completed'
-                    ? `✅ ${uploadStage.message}`
-                    : uploadStage?.message || 'Enviando arquivo...'}
-                </Text>
-                <Text style={styles.uploadingProgress}>
-                  {uploadStage?.progress ?? uploadProgress}%
-                </Text>
-              </View>
-
-              {/* Indicadores de etapas */}
-              <View style={styles.uploadingStages}>
-                <View style={styles.uploadingStage}>
-                  <Text style={[
-                    styles.uploadingStageIcon,
-                    (uploadStage?.progress ?? uploadProgress) > 10
-                      ? styles.uploadingStageCompleted
-                      : uploadStage?.stage === 'uploading'
-                      ? styles.uploadingStageActive
-                      : styles.uploadingStagePending
-                  ]}>
-                    {(uploadStage?.progress ?? uploadProgress) > 10 ? '✓' : '○'}
-                  </Text>
-                  <Text style={styles.uploadingStageText}>Recebendo</Text>
-                </View>
-
-                <View style={styles.uploadingStageLine} />
-
-                <View style={styles.uploadingStage}>
-                  <Text style={[
-                    styles.uploadingStageIcon,
-                    (uploadStage?.progress ?? 0) >= 50
-                      ? styles.uploadingStageCompleted
-                      : uploadStage?.stage === 's3_uploading' || uploadStage?.stage === 's3_completed'
-                      ? styles.uploadingStageActive
-                      : styles.uploadingStagePending
-                  ]}>
-                    {(uploadStage?.progress ?? 0) >= 50 ? '✓' : '○'}
-                  </Text>
-                  <Text style={styles.uploadingStageText}>Armazenando</Text>
-                </View>
-
-                <View style={styles.uploadingStageLine} />
-
-                <View style={styles.uploadingStage}>
-                  <Text style={[
-                    styles.uploadingStageIcon,
-                    (uploadStage?.progress ?? 0) >= 90
-                      ? styles.uploadingStageCompleted
-                      : uploadStage?.stage === 'whatsapp_sending'
-                      ? styles.uploadingStageActive
-                      : styles.uploadingStagePending
-                  ]}>
-                    {(uploadStage?.progress ?? 0) >= 90 ? '✓' : '○'}
-                  </Text>
-                  <Text style={styles.uploadingStageText}>Enviando</Text>
-                </View>
-
-                <View style={styles.uploadingStageLine} />
-
-                <View style={styles.uploadingStage}>
-                  <Text style={[
-                    styles.uploadingStageIcon,
-                    uploadStage?.stage === 'completed'
-                      ? styles.uploadingStageCompleted
-                      : uploadStage?.stage === 'error'
-                      ? styles.uploadingStageError
-                      : styles.uploadingStagePending
-                  ]}>
-                    {uploadStage?.stage === 'completed' ? '✓' : uploadStage?.stage === 'error' ? '✗' : '○'}
-                  </Text>
-                  <Text style={styles.uploadingStageText}>Concluído</Text>
-                </View>
-              </View>
-
-              {/* Barra de progresso */}
-              <View style={styles.uploadingProgressBar}>
-                <View
-                  style={[
-                    styles.uploadingProgressFill,
-                    {
-                      width: `${uploadStage?.progress ?? uploadProgress}%`,
-                      backgroundColor:
-                        uploadStage?.stage === 'error'
-                          ? '#ef4444'
-                          : uploadStage?.stage === 'completed'
-                          ? '#22c55e'
-                          : '#8b5cf6',
-                    },
-                  ]}
-                />
-              </View>
-            </View>
-          )}
-
-          {isRecording ? (
-            /* Barra de gravação de áudio */
-            <View style={styles.recordingBar}>
-              <TouchableOpacity onPress={handleCancelRecording} style={styles.recordingCancelButton}>
-                <Text style={styles.recordingCancelText}>✕</Text>
-              </TouchableOpacity>
-              <View style={styles.recordingIndicator}>
-                <View style={styles.recordingDot} />
-                <Text style={styles.recordingTimeText}>{formatRecordingTime(recordingTime)}</Text>
-              </View>
-              <TouchableOpacity onPress={handleSendRecording} style={styles.recordingSendButton}>
-                <Text style={styles.recordingSendText}>Enviar</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            /* Input de mensagem normal */
-            <View style={styles.inputContainer}>
-              <TouchableOpacity
-                style={styles.emojiButton}
-                onPress={() => setShowEmojiPicker(true)}
-              >
-                <Text style={styles.emojiButtonText}>😊</Text>
-              </TouchableOpacity>
-
-              <TextInput
-                style={styles.input}
-                placeholder="Digite uma mensagem..."
-                value={messageText}
-                onChangeText={setMessageText}
-                multiline
-                maxLength={4096}
-              />
-
-              {messageText.trim() ? (
-                <TouchableOpacity
-                  style={[styles.sendButton, sending && styles.sendButtonDisabled]}
-                  onPress={handleSendMessage}
-                  disabled={sending}
-                >
-                  {sending ? (
-                    <ActivityIndicator size="small" color="#ffffff" />
-                  ) : (
-                    <Text style={styles.sendButtonText}>➤</Text>
-                  )}
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.micButton}
-                  onPress={handleStartRecording}
-                  disabled={uploadingMedia}
-                >
-                  <Text style={styles.micButtonText}>🎤</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
-        </View>
-      ) : (
-        <View style={[styles.inputContainer, styles.inputContainerDisabled, { paddingBottom: keyboardVisible ? 0 : Math.max(12, insets.bottom) }]}>
-          <Text style={styles.inputDisabledText}>
-            {ticket.status === 'PENDING' ? 'Ticket aguardando atendimento' : 'Ticket encerrado'}
-          </Text>
-        </View>
-      )}
-
-      {/* Modal de visualização da foto do perfil */}
-      <Modal
-        visible={showProfilePicture}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowProfilePicture(false)}
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
-        <View style={styles.imageViewerOverlay}>
+        {/* Header */}
+        <View style={styles.header}>
           <TouchableOpacity
-            style={styles.imageViewerClose}
-            onPress={() => setShowProfilePicture(false)}
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
           >
-            <Text style={styles.imageViewerCloseText}>✕</Text>
+            <Text style={styles.backButtonText}>←</Text>
           </TouchableOpacity>
+
+          {/* Avatar do contato */}
           <TouchableOpacity
-            style={styles.imageViewerContent}
-            activeOpacity={1}
-            onPress={() => setShowProfilePicture(false)}
+            style={styles.avatarContainer}
+            onPress={() =>
+              ticket.contact.profilePicture && setShowProfilePicture(true)
+            }
+            disabled={!ticket.contact.profilePicture}
           >
-            {ticket.contact.profilePicture && (
+            {ticket.contact.profilePicture ? (
               <Image
                 source={{ uri: ticket.contact.profilePicture }}
-                style={styles.imageViewerImage}
-                resizeMode="contain"
+                style={styles.avatar}
               />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <Text style={styles.avatarText}>
+                  {ticket.contact.name.charAt(0).toUpperCase()}
+                </Text>
+              </View>
             )}
           </TouchableOpacity>
-        </View>
-      </Modal>
 
-      {/* Modal de anexo */}
-      <Modal
-        visible={showAttachModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowAttachModal(false)}
-      >
-        <TouchableOpacity
-          style={styles.attachModalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowAttachModal(false)}
+          <View style={styles.headerInfo}>
+            <Text style={styles.contactName}>{ticket.contact.name}</Text>
+            <Text style={styles.contactPhone}>{ticket.contact.phone}</Text>
+          </View>
+
+          {/* Botao de Transferir */}
+          <TouchableOpacity
+            style={styles.transferButton}
+            onPress={() => setShowTransferModal(true)}
+          >
+            <View style={styles.transferIconContainer}>
+              <View style={styles.transferUserIcon}>
+                <View style={styles.transferUserHead} />
+                <View style={styles.transferUserBody} />
+              </View>
+              <Text style={styles.transferArrow}>→</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Messages List */}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#8b5cf6" />
+          </View>
+        ) : (
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            keyExtractor={(item) => item.id}
+            renderItem={renderMessage}
+            onScroll={handleScroll}
+            scrollEventThrottle={400}
+            onContentSizeChange={handleContentSizeChange}
+            ListHeaderComponent={
+              loadingMore ? (
+                <ActivityIndicator
+                  size="small"
+                  color="#8b5cf6"
+                  style={styles.loadingMore}
+                />
+              ) : null
+            }
+            contentContainerStyle={styles.messagesList}
+          />
+        )}
+
+        {/* Input Area */}
+        {ticket.status === "OPEN" ? (
+          <View
+            style={[
+              styles.inputWrapper,
+              {
+                paddingBottom: keyboardVisible
+                  ? 0
+                  : Math.max(12, insets.bottom),
+              },
+            ]}
+          >
+            {/* Linha de ações: Config + Attach */}
+            <View style={[styles.topRow, isRecording && { opacity: 0.4 }]}>
+              <TouchableOpacity
+                style={[
+                  styles.attachButton,
+                  (uploadingMedia || isRecording) &&
+                    styles.attachButtonDisabled,
+                ]}
+                onPress={() => {
+                  if (uploadingMedia) {
+                    Alert.alert(
+                      "Aguarde",
+                      "Já existe um arquivo sendo enviado"
+                    );
+                    return;
+                  }
+                  setShowAttachModal(true);
+                }}
+                disabled={isRecording}
+              >
+                <Text
+                  style={[
+                    styles.attachButtonText,
+                    (uploadingMedia || isRecording) &&
+                      styles.attachButtonTextDisabled,
+                  ]}
+                >
+                  📎
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.configButton}
+                onPress={() => setShowConfigModal(true)}
+                disabled={isRecording}
+              >
+                <Text style={styles.configButtonText}>⚙️</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Upload progress - barra de progresso detalhada */}
+            {uploadingMedia && (
+              <View style={styles.uploadingContainer}>
+                {/* Mensagem de status atual */}
+                <View style={styles.uploadingHeader}>
+                  <ActivityIndicator size="small" color="#8b5cf6" />
+                  <Text style={styles.uploadingText}>
+                    {uploadStage?.stage === "error"
+                      ? `❌ ${uploadStage.message}`
+                      : uploadStage?.stage === "completed"
+                      ? `✅ ${uploadStage.message}`
+                      : uploadStage?.message || "Enviando arquivo..."}
+                  </Text>
+                  <Text style={styles.uploadingProgress}>
+                    {uploadStage?.progress ?? uploadProgress}%
+                  </Text>
+                </View>
+
+                {/* Indicadores de etapas */}
+                <View style={styles.uploadingStages}>
+                  <View style={styles.uploadingStage}>
+                    <Text
+                      style={[
+                        styles.uploadingStageIcon,
+                        (uploadStage?.progress ?? uploadProgress) > 10
+                          ? styles.uploadingStageCompleted
+                          : uploadStage?.stage === "uploading"
+                          ? styles.uploadingStageActive
+                          : styles.uploadingStagePending,
+                      ]}
+                    >
+                      {(uploadStage?.progress ?? uploadProgress) > 10
+                        ? "✓"
+                        : "○"}
+                    </Text>
+                    <Text style={styles.uploadingStageText}>Recebendo</Text>
+                  </View>
+
+                  <View style={styles.uploadingStageLine} />
+
+                  <View style={styles.uploadingStage}>
+                    <Text
+                      style={[
+                        styles.uploadingStageIcon,
+                        (uploadStage?.progress ?? 0) >= 50
+                          ? styles.uploadingStageCompleted
+                          : uploadStage?.stage === "s3_uploading" ||
+                            uploadStage?.stage === "s3_completed"
+                          ? styles.uploadingStageActive
+                          : styles.uploadingStagePending,
+                      ]}
+                    >
+                      {(uploadStage?.progress ?? 0) >= 50 ? "✓" : "○"}
+                    </Text>
+                    <Text style={styles.uploadingStageText}>Armazenando</Text>
+                  </View>
+
+                  <View style={styles.uploadingStageLine} />
+
+                  <View style={styles.uploadingStage}>
+                    <Text
+                      style={[
+                        styles.uploadingStageIcon,
+                        (uploadStage?.progress ?? 0) >= 90
+                          ? styles.uploadingStageCompleted
+                          : uploadStage?.stage === "whatsapp_sending"
+                          ? styles.uploadingStageActive
+                          : styles.uploadingStagePending,
+                      ]}
+                    >
+                      {(uploadStage?.progress ?? 0) >= 90 ? "✓" : "○"}
+                    </Text>
+                    <Text style={styles.uploadingStageText}>Enviando</Text>
+                  </View>
+
+                  <View style={styles.uploadingStageLine} />
+
+                  <View style={styles.uploadingStage}>
+                    <Text
+                      style={[
+                        styles.uploadingStageIcon,
+                        uploadStage?.stage === "completed"
+                          ? styles.uploadingStageCompleted
+                          : uploadStage?.stage === "error"
+                          ? styles.uploadingStageError
+                          : styles.uploadingStagePending,
+                      ]}
+                    >
+                      {uploadStage?.stage === "completed"
+                        ? "✓"
+                        : uploadStage?.stage === "error"
+                        ? "✗"
+                        : "○"}
+                    </Text>
+                    <Text style={styles.uploadingStageText}>Concluído</Text>
+                  </View>
+                </View>
+
+                {/* Barra de progresso */}
+                <View style={styles.uploadingProgressBar}>
+                  <View
+                    style={[
+                      styles.uploadingProgressFill,
+                      {
+                        width: `${uploadStage?.progress ?? uploadProgress}%`,
+                        backgroundColor:
+                          uploadStage?.stage === "error"
+                            ? "#ef4444"
+                            : uploadStage?.stage === "completed"
+                            ? "#22c55e"
+                            : "#8b5cf6",
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+            )}
+
+            {isRecording ? (
+              /* Barra de gravação de áudio */
+              <View style={styles.recordingBar}>
+                <TouchableOpacity
+                  onPress={handleCancelRecording}
+                  style={styles.recordingCancelButton}
+                >
+                  <Text style={styles.recordingCancelText}>✕</Text>
+                </TouchableOpacity>
+                <View style={styles.recordingIndicator}>
+                  <View style={styles.recordingDot} />
+                  <Text style={styles.recordingTimeText}>
+                    {formatRecordingTime(recordingTime)}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={handleSendRecording}
+                  style={styles.recordingSendButton}
+                >
+                  <Text style={styles.recordingSendText}>Enviar</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              /* Input de mensagem normal */
+              <View style={styles.inputContainer}>
+                {/* Botão de anexo */}
+                <TouchableOpacity
+                  style={styles.attachButton}
+                  onPress={() => setShowAttachModal(true)}
+                >
+                  <Text style={styles.attachButtonText}>📎</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.emojiButton}
+                  onPress={() => setShowEmojiPicker(true)}
+                >
+                  <Text style={styles.emojiButtonText}>😊</Text>
+                </TouchableOpacity>
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Digite uma mensagem..."
+                  value={messageText}
+                  onChangeText={setMessageText}
+                  multiline
+                  maxLength={4096}
+                />
+
+                {messageText.trim() ? (
+                  <TouchableOpacity
+                    style={[
+                      styles.sendButton,
+                      sending && styles.sendButtonDisabled,
+                    ]}
+                    onPress={handleSendMessage}
+                    disabled={sending}
+                  >
+                    {sending ? (
+                      <ActivityIndicator size="small" color="#ffffff" />
+                    ) : (
+                      <Text style={styles.sendButtonText}>➤</Text>
+                    )}
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.micButton}
+                    onPress={handleStartRecording}
+                  >
+                    <Text style={styles.micButtonText}>🎤</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
+        ) : (
+          <View
+            style={[
+              styles.inputContainer,
+              styles.inputContainerDisabled,
+              {
+                paddingBottom: keyboardVisible
+                  ? 0
+                  : Math.max(12, insets.bottom),
+              },
+            ]}
+          >
+            <Text style={styles.inputDisabledText}>
+              {ticket.status === "PENDING"
+                ? "Ticket aguardando atendimento"
+                : "Ticket encerrado"}
+            </Text>
+          </View>
+        )}
+
+        {/* Modal de visualização da foto do perfil */}
+        <Modal
+          visible={showProfilePicture}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowProfilePicture(false)}
         >
-          <View style={styles.attachModalContainer}>
-            <Text style={styles.attachModalTitle}>Anexar</Text>
+          <View style={styles.imageViewerOverlay}>
             <TouchableOpacity
-              style={styles.attachModalOption}
-              onPress={() => { setShowAttachModal(false); handleTakePhoto(); }}
+              style={styles.imageViewerClose}
+              onPress={() => setShowProfilePicture(false)}
             >
-              <Text style={styles.attachModalOptionText}>📷  Tirar Foto</Text>
+              <Text style={styles.imageViewerCloseText}>✕</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.attachModalOption}
-              onPress={() => { setShowAttachModal(false); handleRecordVideo(); }}
+              style={styles.imageViewerContent}
+              activeOpacity={1}
+              onPress={() => setShowProfilePicture(false)}
             >
-              <Text style={styles.attachModalOptionText}>🎥  Gravar Vídeo</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.attachModalOption}
-              onPress={() => { setShowAttachModal(false); handlePickImage(); }}
-            >
-              <Text style={styles.attachModalOptionText}>🖼️  Galeria</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.attachModalOption, styles.attachModalOptionLast]}
-              onPress={() => { setShowAttachModal(false); handlePickDocument(); }}
-            >
-              <Text style={styles.attachModalOptionText}>📄  Documento</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.attachModalCancel}
-              onPress={() => setShowAttachModal(false)}
-            >
-              <Text style={styles.attachModalCancelText}>Cancelar</Text>
+              {ticket.contact.profilePicture && (
+                <Image
+                  source={{ uri: ticket.contact.profilePicture }}
+                  style={styles.imageViewerImage}
+                  resizeMode="contain"
+                />
+              )}
             </TouchableOpacity>
           </View>
-        </TouchableOpacity>
-      </Modal>
+        </Modal>
 
-      {/* Modal de Configurações */}
-      <ChatConfigModal
-        visible={showConfigModal}
-        onClose={() => setShowConfigModal(false)}
-        signatureEnabled={signatureEnabled}
-        onSignatureToggle={handleSignatureToggle}
-        whisperMode={whisperMode}
-        onWhisperToggle={handleWhisperToggle}
-        user={user ? { name: user.name, type: user.type } : null}
-      />
-
-      {/* Modal de visualização de imagem da mensagem */}
-      <Modal
-        visible={selectedImage !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSelectedImage(null)}
-      >
-        <View style={styles.imageViewerOverlay}>
+        {/* Modal de anexo */}
+        <Modal
+          visible={showAttachModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowAttachModal(false)}
+        >
           <TouchableOpacity
-            style={styles.imageViewerClose}
-            onPress={() => setSelectedImage(null)}
-          >
-            <Text style={styles.imageViewerCloseText}>✕</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.imageViewerContent}
+            style={styles.attachModalOverlay}
             activeOpacity={1}
-            onPress={() => setSelectedImage(null)}
+            onPress={() => setShowAttachModal(false)}
           >
-            {selectedImage && (
-              <Image
-                source={{ uri: selectedImage }}
-                style={styles.imageViewerImage}
-                resizeMode="contain"
-              />
-            )}
+            <View style={styles.attachModalContainer}>
+              <Text style={styles.attachModalTitle}>Anexar</Text>
+              <TouchableOpacity
+                style={styles.attachModalOption}
+                onPress={() => {
+                  setShowAttachModal(false);
+                  handleTakePhoto();
+                }}
+              >
+                <Text style={styles.attachModalOptionText}>📷 Tirar Foto</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.attachModalOption}
+                onPress={() => {
+                  setShowAttachModal(false);
+                  handleRecordVideo();
+                }}
+              >
+                <Text style={styles.attachModalOptionText}>
+                  🎥 Gravar Vídeo
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.attachModalOption}
+                onPress={() => {
+                  setShowAttachModal(false);
+                  handlePickImage();
+                }}
+              >
+                <Text style={styles.attachModalOptionText}>🖼️ Galeria</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.attachModalOption, styles.attachModalOptionLast]}
+                onPress={() => {
+                  setShowAttachModal(false);
+                  handlePickDocument();
+                }}
+              >
+                <Text style={styles.attachModalOptionText}>📄 Documento</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.attachModalCancel}
+                onPress={() => setShowAttachModal(false)}
+              >
+                <Text style={styles.attachModalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
           </TouchableOpacity>
-        </View>
-      </Modal>
+        </Modal>
 
-      {/* Modal de Transferencia de Ticket */}
-      <TransferTicketModal
-        visible={showTransferModal}
-        onClose={() => setShowTransferModal(false)}
-        ticket={ticket}
-        onTransferSuccess={() => {
-          setShowTransferModal(false);
-          navigation.goBack();
+        {/* Modal de Configurações */}
+        <ChatConfigModal
+          visible={showConfigModal}
+          onClose={() => setShowConfigModal(false)}
+          signatureEnabled={signatureEnabled}
+          onSignatureToggle={handleSignatureToggle}
+          whisperMode={whisperMode}
+          onWhisperToggle={handleWhisperToggle}
+          user={user ? { name: user.name, type: user.type } : null}
+        />
+
+        {/* Modal de visualização de imagem da mensagem */}
+        <Modal
+          visible={selectedImage !== null}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setSelectedImage(null)}
+        >
+          <View style={styles.imageViewerOverlay}>
+            <TouchableOpacity
+              style={styles.imageViewerClose}
+              onPress={() => setSelectedImage(null)}
+            >
+              <Text style={styles.imageViewerCloseText}>✕</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.imageViewerContent}
+              activeOpacity={1}
+              onPress={() => setSelectedImage(null)}
+            >
+              {selectedImage && (
+                <Image
+                  source={{ uri: selectedImage }}
+                  style={styles.imageViewerImage}
+                  resizeMode="contain"
+                />
+              )}
+            </TouchableOpacity>
+          </View>
+        </Modal>
+
+        {/* Modal de Transferencia de Ticket */}
+        <TransferTicketModal
+          visible={showTransferModal}
+          onClose={() => setShowTransferModal(false)}
+          ticket={ticket}
+          onTransferSuccess={() => {
+            setShowTransferModal(false);
+            navigation.goBack();
+          }}
+        />
+      </KeyboardAvoidingView>
+
+      <EmojiPicker
+        onEmojiSelected={(emoji) => {
+          setMessageText((prev) => prev + emoji.emoji);
+        }}
+        open={showEmojiPicker}
+        onClose={() => setShowEmojiPicker(false)}
+        enableSearchBar
+        enableRecentlyUsed
+        categoryPosition="top"
+        translation={{
+          search: "Pesquisar",
+          categories: {
+            recently_used: "Recentes",
+            smileys_emotion: "Smileys",
+            people_body: "Pessoas",
+            animals_nature: "Animais",
+            food_drink: "Comida",
+            travel_places: "Viagem",
+            activities: "Atividades",
+            objects: "Objetos",
+            symbols: "Símbolos",
+            flags: "Bandeiras",
+          },
         }}
       />
-
-    </KeyboardAvoidingView>
-
-    <EmojiPicker
-      onEmojiSelected={(emoji) => {
-        setMessageText((prev) => prev + emoji.emoji);
-      }}
-      open={showEmojiPicker}
-      onClose={() => setShowEmojiPicker(false)}
-      enableSearchBar
-      enableRecentlyUsed
-      categoryPosition="top"
-      translation={{
-        search: 'Pesquisar',
-        categories: {
-          recently_used: 'Recentes',
-          smileys_emotion: 'Smileys',
-          people_body: 'Pessoas',
-          animals_nature: 'Animais',
-          food_drink: 'Comida',
-          travel_places: 'Viagem',
-          activities: 'Atividades',
-          objects: 'Objetos',
-          symbols: 'Símbolos',
-          flags: 'Bandeiras',
-        },
-      }}
-    />
     </Fragment>
   );
 }
@@ -1286,23 +1583,23 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: "#f9fafb",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
     paddingTop: 60,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: "#e5e7eb",
   },
   backButton: {
     marginRight: 12,
   },
   backButtonText: {
     fontSize: 28,
-    color: '#3b82f6',
+    color: "#3b82f6",
   },
   avatarContainer: {
     marginRight: 12,
@@ -1316,70 +1613,70 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#e5e7eb',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#e5e7eb",
+    justifyContent: "center",
+    alignItems: "center",
   },
   avatarText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#6b7280',
+    fontWeight: "bold",
+    color: "#6b7280",
   },
   headerInfo: {
     flex: 1,
   },
   contactName: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontWeight: "bold",
+    color: "#111827",
   },
   contactPhone: {
     fontSize: 14,
-    color: '#6b7280',
+    color: "#6b7280",
     marginTop: 2,
   },
   transferButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#f3f4f6',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#f3f4f6",
+    justifyContent: "center",
+    alignItems: "center",
     marginLeft: 8,
   },
   transferIconContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 2,
   },
   transferUserIcon: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   transferUserHead: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#8b5cf6',
+    backgroundColor: "#8b5cf6",
   },
   transferUserBody: {
     width: 16,
     height: 8,
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
-    backgroundColor: '#8b5cf6',
+    backgroundColor: "#8b5cf6",
     marginTop: 2,
   },
   transferArrow: {
     fontSize: 14,
-    color: '#8b5cf6',
-    fontWeight: 'bold',
+    color: "#8b5cf6",
+    fontWeight: "bold",
     marginLeft: 1,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   messagesList: {
     paddingHorizontal: 16,
@@ -1387,13 +1684,13 @@ const styles = StyleSheet.create({
   },
   messageContainer: {
     marginVertical: 4,
-    maxWidth: '80%',
+    maxWidth: "80%",
   },
   messageFromMe: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
   },
   messageFromContact: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   messageBubble: {
     paddingHorizontal: 12,
@@ -1401,31 +1698,31 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   bubbleFromMe: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: "#e5e7eb",
   },
   bubbleFromContact: {
-    backgroundColor: '#4d4c57',
+    backgroundColor: "#4d4c57",
   },
   whisperBubble: {
-    backgroundColor: '#f5f3ff',
-    borderColor: '#c4b5fd',
+    backgroundColor: "#f5f3ff",
+    borderColor: "#c4b5fd",
   },
   whisperLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
     marginBottom: 4,
   },
   whisperLabel: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#7c3aed',
+    fontWeight: "600",
+    color: "#7c3aed",
   },
   imageMessageContainer: {
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
     paddingHorizontal: 8,
     paddingVertical: 8,
   },
@@ -1437,7 +1734,7 @@ const styles = StyleSheet.create({
   },
   videoMessageContainer: {
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
     paddingHorizontal: 8,
     paddingVertical: 8,
   },
@@ -1446,19 +1743,19 @@ const styles = StyleSheet.create({
     height: 180,
     borderRadius: 8,
     marginBottom: 4,
-    backgroundColor: '#000000',
+    backgroundColor: "#000000",
   },
   messageText: {
     fontSize: 15,
   },
   linkText: {
-    color: '#60a5fa',
-    textDecorationLine: 'underline',
+    color: "#60a5fa",
+    textDecorationLine: "underline",
   },
   messageFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
     marginTop: 4,
     gap: 4,
   },
@@ -1469,32 +1766,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   doubleCheckContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     height: 14,
     width: 16,
   },
   doubleCheck: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     lineHeight: 14,
   },
   doubleCheckFirst: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
   },
   doubleCheckSecond: {
-    position: 'absolute',
+    position: "absolute",
     left: 5,
   },
   inputWrapper: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: "#e5e7eb",
   },
   topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 12,
     paddingTop: 8,
     gap: 10,
@@ -1503,32 +1800,32 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#f3f4f6',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#f3f4f6",
+    justifyContent: "center",
+    alignItems: "center",
   },
   configButtonText: {
     fontSize: 18,
   },
   inputContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 12,
     gap: 8,
   },
   inputContainerDisabled: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: "#e5e7eb",
   },
   inputDisabledText: {
-    color: '#9ca3af',
+    color: "#9ca3af",
     fontSize: 14,
   },
   input: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: "#f3f4f6",
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -1536,19 +1833,19 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   sendButton: {
-    backgroundColor: '#8b5cf6',
+    backgroundColor: "#8b5cf6",
     borderRadius: 20,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   sendButtonDisabled: {
-    backgroundColor: '#d1d5db',
+    backgroundColor: "#d1d5db",
   },
   sendButtonText: {
-    color: '#ffffff',
-    fontWeight: '600',
+    color: "#ffffff",
+    fontWeight: "600",
     fontSize: 15,
   },
   loadingMore: {
@@ -1556,22 +1853,22 @@ const styles = StyleSheet.create({
   },
   // Estilos para mensagens do sistema
   systemMessageContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginVertical: 8,
   },
   systemMessageBubble: {
-    backgroundColor: '#fef3c7',
+    backgroundColor: "#fef3c7",
     borderWidth: 1,
-    borderColor: '#fcd34d',
+    borderColor: "#fcd34d",
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    maxWidth: '80%',
-    alignItems: 'center',
+    maxWidth: "80%",
+    alignItems: "center",
   },
   systemMessageHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 6,
     gap: 6,
   },
@@ -1580,60 +1877,60 @@ const styles = StyleSheet.create({
   },
   systemMessageLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#d97706',
+    fontWeight: "600",
+    color: "#d97706",
   },
   systemMessageText: {
     fontSize: 14,
-    color: '#92400e',
-    textAlign: 'center',
+    color: "#92400e",
+    textAlign: "center",
     marginBottom: 4,
   },
   systemMessageTime: {
     fontSize: 11,
-    color: '#d97706',
+    color: "#d97706",
     marginTop: 2,
   },
   // Estilos para o modal de visualização de imagem
   imageViewerOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.9)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   imageViewerClose: {
-    position: 'absolute',
+    position: "absolute",
     top: 60,
     right: 20,
     zIndex: 10,
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   imageViewerCloseText: {
     fontSize: 24,
-    color: '#ffffff',
-    fontWeight: 'bold',
+    color: "#ffffff",
+    fontWeight: "bold",
   },
   imageViewerContent: {
     flex: 1,
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: "100%",
+    justifyContent: "center",
+    alignItems: "center",
   },
   imageViewerImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   emojiButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   emojiButtonText: {
     fontSize: 22,
@@ -1642,8 +1939,8 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 4,
   },
   attachButtonText: {
@@ -1653,45 +1950,45 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#8b5cf6',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#8b5cf6",
+    justifyContent: "center",
+    alignItems: "center",
     marginLeft: 8,
   },
   micButtonText: {
     fontSize: 20,
   },
   uploadingContainer: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: "#f3f4f6",
     borderRadius: 12,
     padding: 12,
     marginHorizontal: 12,
     marginBottom: 8,
   },
   uploadingHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginBottom: 10,
   },
   uploadingText: {
     flex: 1,
     fontSize: 13,
-    color: '#374151',
+    color: "#374151",
   },
   uploadingProgress: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#8b5cf6',
+    fontWeight: "600",
+    color: "#8b5cf6",
   },
   uploadingStages: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 10,
   },
   uploadingStage: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   uploadingStageIcon: {
     fontSize: 12,
@@ -1699,35 +1996,35 @@ const styles = StyleSheet.create({
   },
   uploadingStageText: {
     fontSize: 10,
-    color: '#6b7280',
+    color: "#6b7280",
   },
   uploadingStagePending: {
-    color: '#9ca3af',
+    color: "#9ca3af",
   },
   uploadingStageActive: {
-    color: '#8b5cf6',
-    fontWeight: '600',
+    color: "#8b5cf6",
+    fontWeight: "600",
   },
   uploadingStageCompleted: {
-    color: '#22c55e',
+    color: "#22c55e",
   },
   uploadingStageError: {
-    color: '#ef4444',
+    color: "#ef4444",
   },
   uploadingStageLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#d1d5db',
+    backgroundColor: "#d1d5db",
     marginHorizontal: 4,
   },
   uploadingProgressBar: {
     height: 6,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: "#e5e7eb",
     borderRadius: 3,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   uploadingProgressFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 3,
   },
   attachButtonDisabled: {
@@ -1737,11 +2034,11 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   recordingBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#fef2f2',
+    backgroundColor: "#fef2f2",
     borderRadius: 12,
     gap: 12,
   },
@@ -1749,85 +2046,109 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#ef4444',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#ef4444",
+    justifyContent: "center",
+    alignItems: "center",
   },
   recordingCancelText: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#ffffff',
+    fontWeight: "700",
+    color: "#ffffff",
   },
   recordingIndicator: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   recordingDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#ef4444',
+    backgroundColor: "#ef4444",
   },
   recordingTimeText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#ef4444',
+    fontWeight: "600",
+    color: "#ef4444",
   },
   recordingSendButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: '#8b5cf6',
+    backgroundColor: "#8b5cf6",
   },
   recordingSendText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#ffffff',
+    fontWeight: "600",
+    color: "#ffffff",
   },
   attachModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
   },
   attachModalContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     paddingTop: 16,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    paddingBottom: Platform.OS === "ios" ? 34 : 16,
   },
   attachModalTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#1f2937',
-    textAlign: 'center',
+    fontWeight: "700",
+    color: "#1f2937",
+    textAlign: "center",
     marginBottom: 8,
   },
   attachModalOption: {
     paddingVertical: 14,
     paddingHorizontal: 24,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: "#e5e7eb",
   },
   attachModalOptionLast: {
     borderBottomWidth: 0,
   },
   attachModalOptionText: {
     fontSize: 16,
-    color: '#374151',
+    color: "#374151",
   },
   attachModalCancel: {
     marginTop: 8,
     paddingVertical: 14,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: "#e5e7eb",
   },
   attachModalCancelText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#ef4444',
-    textAlign: 'center',
+    fontWeight: "600",
+    color: "#ef4444",
+    textAlign: "center",
+  },
+  // Estilos para placeholder de upload na mensagem
+  uploadingMessageBubble: {
+    backgroundColor: "rgba(59, 130, 246, 0.1)",
+    borderWidth: 2,
+    borderColor: "rgba(59, 130, 246, 0.3)",
+    borderStyle: "dashed",
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 180,
+  },
+  uploadingMessageText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#3b82f6",
+  },
+  uploadingMessageFileName: {
+    fontSize: 12,
+    color: "#6b7280",
+    marginTop: 4,
+    maxWidth: 150,
   },
 });
