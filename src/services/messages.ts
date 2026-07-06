@@ -39,11 +39,12 @@ export const messagesService = {
 
   async sendTextMessage(
     ticketId: string,
-    content: string
+    content: string,
+    isWhisper: boolean = false,
   ): Promise<{ message: string; data: any }> {
-    const response = await api.post(`/messages/send-text/${ticketId}`, {
-      content,
-    });
+    const payload: any = { content };
+    payload.isWhisper = isWhisper;
+    const response = await api.post(`/messages/send-text/${ticketId}`, payload);
     return response.data;
   },
 

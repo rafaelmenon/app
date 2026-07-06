@@ -11,7 +11,6 @@ import {
   Platform,
   Image,
   Modal,
-  Switch,
   Linking,
   Alert,
   Keyboard,
@@ -27,11 +26,16 @@ import { useSocket } from '../hooks';
 import { useAuth } from '../contexts/AuthContext';
 import { messagesService, MediaUploadProgress } from '../services/messages';
 import { AudioPlayer, ContactMessage, DocumentMessage, TransferTicketModal } from '../components';
+import { ChatConfigModal } from './components/ChatConfigModal';
 import type { Message } from '../types';
+import { Feather } from '@expo/vector-icons';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { format } from 'date-fns';
 
 type ChatScreenProps = NativeStackScreenProps<RootStackParamList, 'Chat'>;
+
+const STORAGE_KEY_SIGNATURE = 'signatureEnabled';
+const STORAGE_KEY_WHISPER = 'whisperEnabled';
 
 export function ChatScreen({ route, navigation }: ChatScreenProps) {
   const { ticket } = route.params;
@@ -55,6 +59,8 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   const [uploadStage, setUploadStage] = useState<MediaUploadProgress | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showAttachModal, setShowAttachModal] = useState(false);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [whisperMode, setWhisperMode] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const recordingRef = useRef<Audio.Recording | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -116,9 +122,14 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
       setSignatureEnabled(true);
       return;
     }
-    AsyncStorage.getItem('signatureEnabled').then((saved) => {
+    AsyncStorage.getItem(STORAGE_KEY_SIGNATURE).then((saved) => {
       if (saved !== null) {
         setSignatureEnabled(JSON.parse(saved));
+      }
+    });
+    AsyncStorage.getItem(STORAGE_KEY_WHISPER).then((saved) => {
+      if (saved !== null) {
+        setWhisperMode(JSON.parse(saved));
       }
     });
   }, [user?.type]);
@@ -231,7 +242,12 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   const handleSignatureToggle = (enabled: boolean) => {
     if (user?.type === 'USER') return;
     setSignatureEnabled(enabled);
-    AsyncStorage.setItem('signatureEnabled', JSON.stringify(enabled));
+    AsyncStorage.setItem(STORAGE_KEY_SIGNATURE, JSON.stringify(enabled));
+  };
+
+  const handleWhisperToggle = (enabled: boolean) => {
+    setWhisperMode(enabled);
+    AsyncStorage.setItem(STORAGE_KEY_WHISPER, JSON.stringify(enabled));
   };
 
   const handleSendMessage = async () => {
@@ -246,7 +262,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
         messageContent = `*${user.name}:*\n${messageContent}`;
       }
 
-      await messagesService.sendTextMessage(ticket.id, messageContent);
+      await messagesService.sendTextMessage(ticket.id, messageContent, whisperMode);
       setMessageText('');
       // Scroll para o final após enviar
       setTimeout(() => {
@@ -641,6 +657,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   const renderMessage = ({ item }: { item: Message }) => {
     const isFromMe = item.fromMe;
     const isSystemMessage = item.type === 'SYSTEM';
+    const isWhisper = item.isWhisper;
 
     // Mensagem do sistema (centralizada)
     if (isSystemMessage) {
@@ -809,9 +826,16 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
           style={[
             styles.messageBubble,
             isFromMe ? styles.bubbleFromMe : styles.bubbleFromContact,
+            isWhisper && styles.whisperBubble,
           ]}
         >
-          {renderTextWithLinks(item.content, isFromMe ? '#111827' : '#ffffff')}
+          {isWhisper && (
+            <View style={styles.whisperLabelRow}>
+              <Feather name="message-square" size={13} color="#7c3aed" />
+              <Text style={styles.whisperLabel}>Sussurro interno</Text>
+            </View>
+          )}
+          {renderTextWithLinks(item.content, isWhisper ? '#7c3aed' : isFromMe ? '#111827' : '#ffffff')}
           <View style={styles.messageFooter}>
             <Text style={[styles.messageTime, { color: isFromMe ? '#6b7280' : '#93c5fd' }]}>
               {formatMessageTime(item.timestamp)}
@@ -902,21 +926,32 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
       {/* Input Area */}
       {ticket.status === 'OPEN' ? (
         <View style={[styles.inputWrapper, { paddingBottom: keyboardVisible ? 0 : Math.max(12, insets.bottom) }]}>
-          {/* Toggle de assinatura */}
-          <View style={styles.signatureRow}>
-            <Text style={styles.signatureLabel}>Assinar</Text>
-            <Switch
-              value={signatureEnabled}
-              onValueChange={handleSignatureToggle}
-              disabled={user?.type === 'USER'}
-              trackColor={{ false: '#d1d5db', true: '#8b5cf6' }}
-              thumbColor={signatureEnabled ? '#ffffff' : '#f4f3f4'}
-            />
-            {signatureEnabled && user && (
-              <Text style={styles.signaturePreview}>
-                <Text style={styles.signaturePreviewBold}>{user.name}:</Text>
-              </Text>
-            )}
+          {/* Linha de ações: Config + Attach */}
+          <View style={[styles.topRow, isRecording && { opacity: 0.4 }]}>
+            
+          <TouchableOpacity
+              style={[styles.attachButton, (uploadingMedia || isRecording) && styles.attachButtonDisabled]}
+              onPress={() => {
+                if (uploadingMedia) {
+                  Alert.alert('Aguarde', 'Já existe um arquivo sendo enviado');
+                  return;
+                }
+                setShowAttachModal(true);
+              }}
+              disabled={isRecording}
+            >
+              <Text style={[styles.attachButtonText, (uploadingMedia || isRecording) && styles.attachButtonTextDisabled]}>📎</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.configButton}
+              onPress={() => setShowConfigModal(true)}
+              disabled={isRecording}
+            >
+              <Text style={styles.configButtonText}>⚙️</Text>
+            </TouchableOpacity>
+
+            
           </View>
 
           {/* Upload progress - barra de progresso detalhada */}
@@ -1039,20 +1074,6 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
           ) : (
             /* Input de mensagem normal */
             <View style={styles.inputContainer}>
-              {/* Botão de anexo - bloqueado durante upload de mídia */}
-              <TouchableOpacity
-                style={[styles.attachButton, uploadingMedia && styles.attachButtonDisabled]}
-                onPress={() => {
-                  if (uploadingMedia) {
-                    Alert.alert('Aguarde', 'Já existe um arquivo sendo enviado');
-                    return;
-                  }
-                  setShowAttachModal(true);
-                }}
-              >
-                <Text style={[styles.attachButtonText, uploadingMedia && styles.attachButtonTextDisabled]}>📎</Text>
-              </TouchableOpacity>
-
               <TouchableOpacity
                 style={styles.emojiButton}
                 onPress={() => setShowEmojiPicker(true)}
@@ -1178,6 +1199,17 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Modal de Configurações */}
+      <ChatConfigModal
+        visible={showConfigModal}
+        onClose={() => setShowConfigModal(false)}
+        signatureEnabled={signatureEnabled}
+        onSignatureToggle={handleSignatureToggle}
+        whisperMode={whisperMode}
+        onWhisperToggle={handleWhisperToggle}
+        user={user ? { name: user.name, type: user.type } : null}
+      />
 
       {/* Modal de visualização de imagem da mensagem */}
       <Modal
@@ -1376,6 +1408,21 @@ const styles = StyleSheet.create({
   bubbleFromContact: {
     backgroundColor: '#4d4c57',
   },
+  whisperBubble: {
+    backgroundColor: '#f5f3ff',
+    borderColor: '#c4b5fd',
+  },
+  whisperLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  whisperLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#7c3aed',
+  },
   imageMessageContainer: {
     borderRadius: 12,
     overflow: 'hidden',
@@ -1445,25 +1492,23 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
   },
-  signatureRow: {
+  topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingTop: 8,
-    gap: 8,
+    gap: 10,
   },
-  signatureLabel: {
-    fontSize: 13,
-    color: '#6b7280',
+  configButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  signaturePreview: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginLeft: 4,
-  },
-  signaturePreviewBold: {
-    fontWeight: '700',
-    color: '#6b7280',
+  configButtonText: {
+    fontSize: 18,
   },
   inputContainer: {
     flexDirection: 'row',
