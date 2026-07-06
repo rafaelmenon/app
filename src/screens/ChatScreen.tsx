@@ -529,52 +529,55 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
     }
   };
 
-  // Selecionar da galeria
+  // Selecionar da galeria (suporta seleção múltipla)
   const handlePickImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images", "videos"],
         quality: 0.8,
-        allowsMultipleSelection: false,
+        allowsMultipleSelection: true,
+        selectionLimit: 10,
       });
 
       if (result.canceled || !result.assets?.length) return;
 
-      const asset = result.assets[0];
-      const mimeType = asset.mimeType || getMimeType(asset.uri);
-      const fileName =
-        asset.fileName ||
-        `media_${Date.now()}.${mimeType.split("/")[1] || "jpg"}`;
-      const fileSize = asset.fileSize || 0;
+      for (const asset of result.assets) {
+        const mimeType = asset.mimeType || getMimeType(asset.uri);
+        const fileName =
+          asset.fileName ||
+          `media_${Date.now()}.${mimeType.split("/")[1] || "jpg"}`;
+        const fileSize = asset.fileSize || 0;
 
-      // Passo 1: Criar mensagem com status PROCESSING
-      // O socket vai receber message_created e adicionar à lista automaticamente
-      const { data: backendMessage } =
-        await messagesService.prepareMediaMessage(
-          ticket.id,
-          fileName,
-          mimeType,
-          fileSize,
-          undefined
-        );
+        try {
+          const { data: backendMessage } =
+            await messagesService.prepareMediaMessage(
+              ticket.id,
+              fileName,
+              mimeType,
+              fileSize,
+              undefined
+            );
 
-      // Passo 2: Completar upload em background (não bloqueia a UI)
-      messagesService
-        .completeMediaUpload(
-          backendMessage.id,
-          asset.uri,
-          fileName,
-          mimeType,
-          undefined,
-          (progress) => setUploadProgress(progress)
-        )
-        .catch((error) => {
-          console.error("Erro ao completar upload da imagem/vídeo:", error);
-          setMessages((prev) =>
-            prev.filter((msg) => msg.id !== backendMessage.id)
-          );
-          Alert.alert("Erro", "Não foi possível enviar o arquivo");
-        });
+          messagesService
+            .completeMediaUpload(
+              backendMessage.id,
+              asset.uri,
+              fileName,
+              mimeType,
+              undefined,
+              (progress) => setUploadProgress(progress)
+            )
+            .catch((error) => {
+              console.error("Erro ao completar upload da imagem/vídeo:", error);
+              setMessages((prev) =>
+                prev.filter((msg) => msg.id !== backendMessage.id)
+              );
+              Alert.alert("Erro", "Não foi possível enviar o arquivo");
+            });
+        } catch (error) {
+          console.error("Erro ao preparar mensagem de mídia:", error);
+        }
+      }
     } catch (error: any) {
       console.error("Erro ao enviar imagem/vídeo:", error);
       Alert.alert("Erro", "Não foi possível enviar o arquivo");
