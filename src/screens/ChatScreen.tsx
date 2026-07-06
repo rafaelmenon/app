@@ -75,6 +75,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [whisperMode, setWhisperMode] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [androidKeyboardHeight, setAndroidKeyboardHeight] = useState(0);
   const recordingRef = useRef<Audio.Recording | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const flatListRef = useRef<FlatList>(null);
@@ -153,14 +154,21 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
 
   // Detectar quando o teclado abre/fecha para ajustar padding
   useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener(
-      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
-      () => setKeyboardVisible(true)
-    );
-    const keyboardDidHideListener = Keyboard.addListener(
-      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
-      () => setKeyboardVisible(false)
-    );
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const keyboardDidShowListener = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardVisible(true);
+      if (Platform.OS === 'android') {
+        setAndroidKeyboardHeight(e.endCoordinates.height);
+      }
+    });
+    const keyboardDidHideListener = Keyboard.addListener(hideEvent, () => {
+      setKeyboardVisible(false);
+      if (Platform.OS === 'android') {
+        setAndroidKeyboardHeight(0);
+      }
+    });
 
     return () => {
       keyboardDidShowListener.remove();
@@ -1056,19 +1064,17 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
     );
   };
 
+  const Container = Platform.OS === 'ios' ? KeyboardAvoidingView : View;
+  const containerProps = Platform.OS === 'ios'
+    ? { style: styles.container, behavior: 'padding' as const, keyboardVerticalOffset: 0 }
+    : { style: [styles.container, androidKeyboardHeight > 0 && { paddingBottom: androidKeyboardHeight+30 }] };
+
   return (
     <Fragment>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
-      >
+      <Container {...containerProps}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-          >
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Text style={styles.backButtonText}>←</Text>
           </TouchableOpacity>
 
@@ -1337,12 +1343,12 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
               /* Input de mensagem normal */
               <View style={styles.inputContainer}>
                 {/* Botão de anexo */}
-                <TouchableOpacity
+                {/* <TouchableOpacity
                   style={styles.attachButton}
                   onPress={() => setShowAttachModal(true)}
                 >
                   <Text style={styles.attachButtonText}>📎</Text>
-                </TouchableOpacity>
+                </TouchableOpacity> */}
 
                 <TouchableOpacity
                   style={styles.emojiButton}
@@ -1549,7 +1555,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
             navigation.goBack();
           }}
         />
-      </KeyboardAvoidingView>
+      </Container>
 
       <EmojiPicker
         onEmojiSelected={(emoji) => {
