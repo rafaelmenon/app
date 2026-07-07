@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Platform,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 
 interface ConfigModalProps {
   visible: boolean;
@@ -35,13 +36,14 @@ export function ChatConfigModal({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <TouchableOpacity
-        style={styles.configModalOverlay}
-        activeOpacity={1}
-        onPress={onClose}
-      >
+      <View style={styles.configModalOverlay}>
         <View style={styles.configModalContainer}>
-          <Text style={styles.configModalTitle}>Configurações</Text>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Configurações</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Feather name="x" size={22} color="#666" />
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.configModalRow}>
             <Text style={styles.configModalLabel}>Assinar</Text>
@@ -69,14 +71,8 @@ export function ChatConfigModal({
             />
           </View>
 
-          <TouchableOpacity
-            style={styles.configModalClose}
-            onPress={onClose}
-          >
-            <Text style={styles.configModalCloseText}>Fechar</Text>
-          </TouchableOpacity>
         </View>
-      </TouchableOpacity>
+      </View>
     </Modal>
   );
 }
@@ -89,23 +85,29 @@ const styles = StyleSheet.create({
   },
   configModalContainer: {
     backgroundColor: '#ffffff',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingTop: 16,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     paddingBottom: Platform.OS === 'ios' ? 34 : 16,
-    paddingHorizontal: 16,
   },
-  configModalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
     color: '#1f2937',
-    textAlign: 'center',
-    marginBottom: 16,
   },
   configModalRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
+    paddingHorizontal: 20,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#e5e7eb',
     gap: 10,
@@ -123,17 +125,5 @@ const styles = StyleSheet.create({
   configModalPreviewBold: {
     fontWeight: '700',
     color: '#6b7280',
-  },
-  configModalClose: {
-    marginTop: 8,
-    paddingVertical: 14,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#e5e7eb',
-  },
-  configModalCloseText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ef4444',
-    textAlign: 'center',
   },
 });

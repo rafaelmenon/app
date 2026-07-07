@@ -38,6 +38,7 @@ import {
   TransferTicketModal,
 } from "../components";
 import { ChatConfigModal } from "./components/ChatConfigModal";
+import { QuickRepliesModal } from "./components/QuickRepliesModal";
 import type { Message } from "../types";
 import { Feather } from "@expo/vector-icons";
 import type { RootStackParamList } from "../navigation/AppNavigator";
@@ -73,6 +74,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showAttachModal, setShowAttachModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [showQuickRepliesModal, setShowQuickRepliesModal] = useState(false);
   const [whisperMode, setWhisperMode] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [androidKeyboardHeight, setAndroidKeyboardHeight] = useState(0);
@@ -1166,9 +1168,8 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
             <View style={[styles.topRow, isRecording && { opacity: 0.4 }]}>
               <TouchableOpacity
                 style={[
-                  styles.attachButton,
-                  (uploadingMedia || isRecording) &&
-                    styles.attachButtonDisabled,
+                  styles.topRowButton,
+                  (uploadingMedia || isRecording) && { opacity: 0.5 },
                 ]}
                 onPress={() => {
                   if (uploadingMedia) {
@@ -1182,23 +1183,23 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
                 }}
                 disabled={isRecording}
               >
-                <Text
-                  style={[
-                    styles.attachButtonText,
-                    (uploadingMedia || isRecording) &&
-                      styles.attachButtonTextDisabled,
-                  ]}
-                >
-                  📎
-                </Text>
+                <Feather name="paperclip" size={20} color="#666" />
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.configButton}
+                style={styles.topRowButton}
                 onPress={() => setShowConfigModal(true)}
                 disabled={isRecording}
               >
-                <Text style={styles.configButtonText}>⚙️</Text>
+                <Feather name="settings" size={20} color="#666" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.topRowButton}
+                onPress={() => setShowQuickRepliesModal(true)}
+                disabled={isRecording}
+              >
+                <Feather name="hash" size={20} color="#666" />
               </TouchableOpacity>
             </View>
 
@@ -1345,13 +1346,6 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
             ) : (
               /* Input de mensagem normal */
               <View style={styles.inputContainer}>
-                {/* Botão de anexo */}
-                {/* <TouchableOpacity
-                  style={styles.attachButton}
-                  onPress={() => setShowAttachModal(true)}
-                >
-                  <Text style={styles.attachButtonText}>📎</Text>
-                </TouchableOpacity> */}
 
                 <TouchableOpacity
                   style={styles.emojiButton}
@@ -1506,6 +1500,16 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
             </View>
           </TouchableOpacity>
         </Modal>
+
+        {/* Modal de Respostas Rápidas */}
+        <QuickRepliesModal
+          visible={showQuickRepliesModal}
+          onClose={() => setShowQuickRepliesModal(false)}
+          onSelect={(message) => {
+            setMessageText(message);
+            setShowQuickRepliesModal(false);
+          }}
+        />
 
         {/* Modal de Configurações */}
         <ChatConfigModal
@@ -1805,16 +1809,13 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     gap: 10,
   },
-  configButton: {
+  topRowButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
     backgroundColor: "#f3f4f6",
     justifyContent: "center",
     alignItems: "center",
-  },
-  configButtonText: {
-    fontSize: 18,
   },
   inputContainer: {
     flexDirection: "row",
@@ -1944,17 +1945,6 @@ const styles = StyleSheet.create({
   emojiButtonText: {
     fontSize: 22,
   },
-  attachButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 4,
-  },
-  attachButtonText: {
-    fontSize: 22,
-  },
   micButton: {
     width: 40,
     height: 40,
@@ -2035,12 +2025,6 @@ const styles = StyleSheet.create({
   uploadingProgressFill: {
     height: "100%",
     borderRadius: 3,
-  },
-  attachButtonDisabled: {
-    opacity: 0.5,
-  },
-  attachButtonTextDisabled: {
-    opacity: 0.5,
   },
   recordingBar: {
     flexDirection: "row",

@@ -147,3 +147,44 @@ export interface Ticket {
     color: string
   }[]
 }
+
+export interface QuickReplyGroup {
+  id: string
+  name: string
+  isPublic: boolean
+  companyId: string
+  userId: string
+  createdAt: string
+  updatedAt: string
+  user: {
+    id: string
+    name: string
+    email: string
+  }
+}
+
+export interface QuickReply {
+  id: string
+  shortcut: string
+  message: string
+  groupId: string | null
+  companyId: string
+  userId: string
+  isPublic: boolean
+  mediaUrl: string | null
+  mediaType: string | null
+  mediaSize: number | null
+  fileName: string | null
+  createdAt: string
+  updatedAt: string
+  user: {
+    id: string
+    name: string
+    email: string
+  }
+  group?: {
+    id: string
+    name: string
+    isPublic: boolean
+  } | null
+}
