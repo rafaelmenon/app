@@ -37,6 +37,7 @@ import {
   DocumentMessage,
   TransferTicketModal,
 } from "../components";
+import { AttachModal } from "./components/AttachModal";
 import { ChatConfigModal } from "./components/ChatConfigModal";
 import { QuickRepliesModal } from "./components/QuickRepliesModal";
 import type { Message } from "../types";
@@ -1440,66 +1441,14 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
         </Modal>
 
         {/* Modal de anexo */}
-        <Modal
+        <AttachModal
           visible={showAttachModal}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowAttachModal(false)}
-        >
-          <TouchableOpacity
-            style={styles.attachModalOverlay}
-            activeOpacity={1}
-            onPress={() => setShowAttachModal(false)}
-          >
-            <View style={styles.attachModalContainer}>
-              <Text style={styles.attachModalTitle}>Anexar</Text>
-              <TouchableOpacity
-                style={styles.attachModalOption}
-                onPress={() => {
-                  setShowAttachModal(false);
-                  handleTakePhoto();
-                }}
-              >
-                <Text style={styles.attachModalOptionText}>📷 Tirar Foto</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.attachModalOption}
-                onPress={() => {
-                  setShowAttachModal(false);
-                  handleRecordVideo();
-                }}
-              >
-                <Text style={styles.attachModalOptionText}>
-                  🎥 Gravar Vídeo
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.attachModalOption}
-                onPress={() => {
-                  setShowAttachModal(false);
-                  handlePickImage();
-                }}
-              >
-                <Text style={styles.attachModalOptionText}>🖼️ Galeria</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.attachModalOption, styles.attachModalOptionLast]}
-                onPress={() => {
-                  setShowAttachModal(false);
-                  handlePickDocument();
-                }}
-              >
-                <Text style={styles.attachModalOptionText}>📄 Documento</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.attachModalCancel}
-                onPress={() => setShowAttachModal(false)}
-              >
-                <Text style={styles.attachModalCancelText}>Cancelar</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </Modal>
+          onClose={() => setShowAttachModal(false)}
+          onTakePhoto={handleTakePhoto}
+          onRecordVideo={handleRecordVideo}
+          onPickImage={handlePickImage}
+          onPickDocument={handlePickDocument}
+        />
 
         {/* Modal de Respostas Rápidas */}
         <QuickRepliesModal
@@ -2075,50 +2024,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: "#ffffff",
-  },
-  attachModalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end",
-  },
-  attachModalContainer: {
-    backgroundColor: "#ffffff",
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingTop: 16,
-    paddingBottom: Platform.OS === "ios" ? 34 : 16,
-  },
-  attachModalTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1f2937",
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  attachModalOption: {
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#e5e7eb",
-  },
-  attachModalOptionLast: {
-    borderBottomWidth: 0,
-  },
-  attachModalOptionText: {
-    fontSize: 16,
-    color: "#374151",
-  },
-  attachModalCancel: {
-    marginTop: 8,
-    paddingVertical: 14,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#e5e7eb",
-  },
-  attachModalCancelText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#ef4444",
-    textAlign: "center",
   },
   // Estilos para placeholder de upload na mensagem
   uploadingMessageBubble: {
