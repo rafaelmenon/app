@@ -535,6 +535,17 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   // Selecionar da galeria (suporta seleção múltipla)
   const handlePickImage = async () => {
     try {
+      const mediaLibraryPermission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!mediaLibraryPermission.granted) {
+        Alert.alert(
+          "Permissão necessária",
+          "Permita o acesso à galeria para selecionar fotos e vídeos",
+          [{ text: "OK" }]
+        );
+        return;
+      }
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images", "videos"],
         quality: 0.8,

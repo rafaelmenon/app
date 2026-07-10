@@ -28,7 +28,9 @@ export function AttachModal({
 }: AttachModalProps) {
   const handleOption = (action: () => void) => {
     onClose();
-    action();
+    setTimeout(() => {
+      action();
+    }, 300);
   };
 
   return (

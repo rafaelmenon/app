@@ -14,16 +14,18 @@
     },
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "8",
+      "buildNumber": "10",
       "bundleIdentifier": "com.whatsprofissional.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSMicrophoneUsageDescription": "Precisamos de acesso ao seu microfone para que você possa enviar mensagens de voz para seus contatos."
+        "NSMicrophoneUsageDescription": "Precisamos de acesso ao seu microfone para que você possa enviar mensagens de voz para seus contatos.",
+        "NSPhotoLibraryUsageDescription": "Precisamos de acesso à sua galeria para que você possa enviar fotos e vídeos para seus contatos.",
+        "NSCameraUsageDescription": "Precisamos de acesso à câmera para que você possa tirar fotos e gravar vídeos."
       }
     },
     "android": {
       "package": "com.whatsprofissional.app",
-      "versionCode": 7,
+      "versionCode": 8,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#321e3c"
@@ -46,6 +48,13 @@
         {
           "mode": "production",
           "disableLocation": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Precisamos de acesso à sua galeria para que você possa enviar fotos e vídeos.",
+          "cameraPermission": "Precisamos de acesso à câmera para que você possa tirar fotos e gravar vídeos."
         }
       ]
     ]
