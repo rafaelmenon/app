@@ -140,6 +140,7 @@ export interface Ticket {
     evolutionName: string
     status: string
     enableRatingMessage?: boolean
+    integration?: string
   }
   tags?: {
     id: string
@@ -187,4 +188,39 @@ export interface QuickReply {
     name: string
     isPublic: boolean
   } | null
+}
+
+export interface TemplateComponent {
+  type: string;
+  format?: string;
+  text?: string;
+  buttons?: Array<{
+    type: string;
+    text: string;
+    url?: string;
+    phone_number?: string;
+  }>;
+  example?: {
+    body_text?: string[][];
+    header_text?: string[];
+  };
+}
+
+export interface TemplateHeaderMedia {
+  type: 'IMAGE' | 'VIDEO' | 'DOCUMENT';
+  url: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+}
+
+export interface MetaTemplate {
+  id: string;
+  name: string;
+  category: string;
+  language: string;
+  status: string;
+  components: TemplateComponent[];
+  variableMapping?: Array<{ index: number; name: string }>;
+  headerMedia?: TemplateHeaderMedia | null;
 }

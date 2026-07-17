@@ -44,6 +44,7 @@ import type { Message } from "../types";
 import { Feather } from "@expo/vector-icons";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { format } from "date-fns";
+import { SendTemplateModal } from "./components/SendTemplateModal";
 
 type ChatScreenProps = NativeStackScreenProps<RootStackParamList, "Chat">;
 
@@ -76,6 +77,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   const [showAttachModal, setShowAttachModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showQuickRepliesModal, setShowQuickRepliesModal] = useState(false);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [whisperMode, setWhisperMode] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [androidKeyboardHeight, setAndroidKeyboardHeight] = useState(0);
@@ -91,6 +93,10 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
     companyId: user?.companyId,
     showAll: false,
   });
+
+  const isOfficialConnection = 
+    ticket.connection?.integration === "WHATSAPP-BUSINESS" ||
+    ticket.connection?.integration === "WHATSAPP-BUSINESS-EMBEDDED";
 
   // Carregar mensagens
   const loadMessages = async (pageNum = 1, append = false) => {
@@ -1213,6 +1219,17 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
               >
                 <Feather name="hash" size={20} color="#666" />
               </TouchableOpacity>
+              
+              {isOfficialConnection && (
+                <TouchableOpacity
+                style={styles.topRowButton}
+                onPress={() => setShowTemplateModal(true)}
+                disabled={isRecording}
+                >
+                  <Feather name="file-text" size={20} color="#666" />
+                </TouchableOpacity>
+              )}
+
             </View>
 
             {/* Upload progress - barra de progresso detalhada */}
@@ -1480,6 +1497,15 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
           whisperMode={whisperMode}
           onWhisperToggle={handleWhisperToggle}
           user={user ? { name: user.name, type: user.type } : null}
+        />
+
+        <SendTemplateModal
+          visible={showTemplateModal}
+          onClose={() => setShowTemplateModal(false)}
+          ticketId={ticket.id}
+          connectionId={ticket.connectionId}
+          contactName={'ALESSANDRO - TESTE'}
+          onSuccess={()=>{}}
         />
 
         {/* Modal de visualização de imagem da mensagem */}
