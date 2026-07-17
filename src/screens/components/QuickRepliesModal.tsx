@@ -86,7 +86,10 @@ export function QuickRepliesModal({
         <View style={styles.container}>
           {/* HEADER */}
           <View style={styles.header}>
-            <Text style={styles.title}>Respostas Rápidas</Text>
+            <View style={styles.headerLeft}>
+              <Feather name="hash" size={20} color="#666" />
+              <Text style={styles.title}>Respostas Rápidas</Text>
+            </View>
             <TouchableOpacity onPress={onClose}>
               <Feather name="x" size={22} color="#666" />
             </TouchableOpacity>
@@ -240,12 +243,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   title: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
     color: '#1f2937',
   },
