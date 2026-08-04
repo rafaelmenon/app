@@ -79,6 +79,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
   const [showQuickRepliesModal, setShowQuickRepliesModal] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [whisperMode, setWhisperMode] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [androidKeyboardHeight, setAndroidKeyboardHeight] = useState(0);
   const recordingRef = useRef<Audio.Recording | null>(null);
@@ -1384,10 +1385,18 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
                 </TouchableOpacity>
 
                 <TextInput
-                  style={styles.input}
+                  style={[
+                    styles.input,
+                    inputFocused && {
+                      borderWidth: 1.5,
+                      borderColor: whisperMode ? "#7c3aed" : "#3B82F6",
+                    },
+                  ]}
                   placeholder="Digite uma mensagem..."
                   value={messageText}
                   onChangeText={setMessageText}
+                  onFocus={() => setInputFocused(true)}
+                  onBlur={() => setInputFocused(false)}
                   multiline
                   maxLength={4096}
                 />
@@ -1397,6 +1406,7 @@ export function ChatScreen({ route, navigation }: ChatScreenProps) {
                     style={[
                       styles.sendButton,
                       sending && styles.sendButtonDisabled,
+                      { backgroundColor: whisperMode ? "#7c3aed" : "#3B82F6" },
                     ]}
                     onPress={handleSendMessage}
                     disabled={sending}
