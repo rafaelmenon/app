@@ -54,7 +54,8 @@ export function TicketsScreen({ navigation }: TicketsScreenProps) {
     groups: true,
   });
 
-  const [showAll, setShowAll] = useState(true);
+  // Igual ao web: começa desligado e sincroniza com o valor salvo do usuário
+  const [showAll, setShowAll] = useState(false);
   const [onlyUnread, setOnlyUnread] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -130,6 +131,23 @@ export function TicketsScreen({ navigation }: TicketsScreenProps) {
     closed: 0,
     groups: 0,
   });
+
+  // Permissão para usar o filtro "Mostrar todos" (default: true, igual ao web)
+  const canUseShowAllFilter = user?.showAllTicketsFilter !== false;
+
+  // Sincronizar showAll com o valor salvo do usuário.
+  // Mesmo padrão do web: usa o valor do banco e, se não houver, liga por padrão.
+  //
+  // Sem a permissão o filtro fica desligado - não basta esconder o botão,
+  // senão o app continuaria pedindo os tickets de todos à API.
+  useEffect(() => {
+    if (!canUseShowAllFilter) {
+      setShowAll(false);
+      return;
+    }
+
+    setShowAll(user?.showAllTickets ?? true);
+  }, [user?.showAllTickets, canUseShowAllFilter]);
 
   // Inicializar Socket.IO
   const { on, off } = useSocket({
@@ -834,14 +852,16 @@ export function TicketsScreen({ navigation }: TicketsScreenProps) {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.filterButton, showAll && styles.filterButtonActive]}
-              onPress={() => setShowAll(!showAll)}
-            >
-              <Text style={[styles.filterText, showAll && styles.filterTextActive]}>
-                Mostrar todos
-              </Text>
-            </TouchableOpacity>
+            {canUseShowAllFilter && (
+              <TouchableOpacity
+                style={[styles.filterButton, showAll && styles.filterButtonActive]}
+                onPress={() => setShowAll(!showAll)}
+              >
+                <Text style={[styles.filterText, showAll && styles.filterTextActive]}>
+                  Mostrar todos
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Tickets List */}

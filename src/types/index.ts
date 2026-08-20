@@ -5,6 +5,10 @@ export interface User {
   type: 'USER' | 'ADMIN' | 'SUPER' | 'SUPERVISOR'
   companyId: string
   showTicketsWithoutQueue: boolean
+  // Estado atual do filtro "Mostrar todos" (salvo no banco)
+  showAllTickets?: boolean
+  // Permissão para exibir o filtro "Mostrar todos" (default: true)
+  showAllTicketsFilter?: boolean
   canViewCampaigns: boolean
   canAccessAdminMenu: boolean
   hasSeenTour: boolean
