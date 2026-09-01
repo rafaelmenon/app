@@ -66,13 +66,25 @@ export function TicketsScreen({ navigation }: TicketsScreenProps) {
   // Estados para filtro de filas
   const [queues, setQueues] = useState<Queue[]>([]);
   const [selectedQueueIds, setSelectedQueueIds] = useState<string[]>([]);
-  const [includeNoQueue, setIncludeNoQueue] = useState(true);
+  // Igual à web: o padrão vem da permissão do usuário, não é ligado fixo
+  const [includeNoQueue, setIncludeNoQueue] = useState(
+    () => user?.showTicketsWithoutQueue === true
+  );
   const [queuesLoaded, setQueuesLoaded] = useState(false); // Flag para saber se as filas foram carregadas
 
   // Refs para manter valores atuais dos filtros (para uso em callbacks)
   const selectedQueueIdsRef = useRef<string[]>([]);
   const queuesRef = useRef<Queue[]>([]);
-  const includeNoQueueRef = useRef(true);
+  const includeNoQueueRef = useRef(user?.showTicketsWithoutQueue === true);
+
+  // Se o usuário não tem (ou perdeu) a permissão de ver tickets sem fila,
+  // manter o filtro sempre desligado - igual à web. Cobre também o caso do
+  // `user` ainda não ter carregado na primeira renderização.
+  useEffect(() => {
+    if (user?.showTicketsWithoutQueue !== true && includeNoQueue) {
+      setIncludeNoQueue(false);
+    }
+  }, [user?.showTicketsWithoutQueue, includeNoQueue]);
 
   // Atualizar refs quando os estados mudam
   useEffect(() => {
@@ -922,7 +934,7 @@ export function TicketsScreen({ navigation }: TicketsScreenProps) {
         onIncludeNoQueueToggle={() => setIncludeNoQueue(!includeNoQueue)}
         onSelectAll={selectAllQueues}
         onDeselectAll={deselectAllQueues}
-        showTicketsWithoutQueue={user?.showTicketsWithoutQueue !== false}
+        showTicketsWithoutQueue={user?.showTicketsWithoutQueue === true}
       />
 
       {/* Modal de Fechar Ticket */}
